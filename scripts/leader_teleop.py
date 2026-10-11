@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections import deque
 from pathlib import Path
 
 import numpy as np
@@ -411,6 +412,8 @@ class LeaderTeleop:
         self.last_sequence = -1
         self.last_packet_monotonic = 0.0
         self.packet_count = 0
+        self._test_packet_queue: deque[tuple[np.ndarray, float, int]] = deque()
+        self._test_consume_countdown = 2
         self.grasp_attached = False
         self.gripper_contact_locked = False
         self.gripper_contact_target = np.zeros(2, dtype=np.float64)
@@ -839,6 +842,10 @@ class LeaderTeleop:
             self.current_randomization["objects"][test_name]["position_m"] = (
                 test_position.tolist()
             )
+            # The mock-leader regression grabs the target while it is held at
+            # the calibrated pose. Keep the body kinematic so it does not fall
+            # before the scripted grasp arrives.
+            self._set_target_kinematic(True)
         # Let all stationery fall onto the work surface and warm up cameras.
         for settle_step in range(60):
             self._apply_targets()
@@ -1131,6 +1138,20 @@ class LeaderTeleop:
                 print(f"[udp-warn] Dropping an invalid packet: {exc}")
                 continue
 
+            if ARGS.test:
+                # The mock bridge emits a wall-clock scripted timeline. Queue
+                # every packet and replay it in order at the nominal 60 Hz
+                # simulation rate below, so a render-limited loop cannot
+                # compress the timeline into slow motion.
+                self._test_packet_queue.append(
+                    (
+                        np.asarray(joint_positions, dtype=np.float64),
+                        float(gripper),
+                        int(sequence),
+                    )
+                )
+                continue
+
             now = time.monotonic()
             sequence_restarted = (
                 self.last_packet_monotonic > 0.0
@@ -1145,6 +1166,19 @@ class LeaderTeleop:
                 np.asarray(joint_positions, dtype=np.float64),
                 float(gripper),
             )
+        if ARGS.test:
+            # One queued packet every two physics steps: 60 Hz of scripted
+            # leader data on the 120 Hz simulation clock.
+            self._test_consume_countdown -= 1
+            if self._test_consume_countdown <= 0 and self._test_packet_queue:
+                joint_positions, gripper, sequence = (
+                    self._test_packet_queue.popleft()
+                )
+                self._test_consume_countdown = 2
+                self.last_sequence = sequence
+                self.last_packet_monotonic = time.monotonic()
+                self.packet_count += 1
+                latest = (joint_positions, gripper)
         return latest
 
     def _update_command(self, arm_target: np.ndarray, gripper_target: float) -> None:
@@ -1473,14 +1507,14 @@ class LeaderTeleop:
         # it is intentionally not enabled in direct arm-control mode.
         self._set_target_collision_enabled(True)
         self._set_target_gripper_contacts_enabled(False)
-        self.active_target.set_linear_velocity(np.zeros(3, dtype=np.float64))
-        self.active_target.set_angular_velocity(np.zeros(3, dtype=np.float64))
         # A dynamic fixed joint would repeatedly chase the directly mirrored
         # arm links and accumulate solver velocity. Pose carry below writes
         # the measured relative transform directly and stores no constraint
-        # stress. Keep the rigid body dynamic because changing an initialized
-        # PhysX body to kinematic is not reliably reflected by tensor views.
+        # stress. Make the body dynamic before touching velocities: PhysX
+        # rejects velocity writes on a kinematic body.
         self._set_target_kinematic(False)
+        self.active_target.set_linear_velocity(np.zeros(3, dtype=np.float64))
+        self.active_target.set_angular_velocity(np.zeros(3, dtype=np.float64))
         self.grasp_attached = True
         self.release_collision_pending_steps = 0
         self.episode_grasped = True
@@ -1727,7 +1761,9 @@ class LeaderTeleop:
             if ARGS.test and self.packet_count >= ARGS.test_packets:
                 for _ in range(30):
                     self._apply_targets()
+                    self._update_attached_target_pose()
                     self.world.step(render=False)
+                    self._update_attached_target_pose()
                 self._run_gripper_hold_test()
                 break
 

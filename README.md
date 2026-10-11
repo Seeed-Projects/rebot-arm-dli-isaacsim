@@ -9,6 +9,9 @@ The default application contains no autonomous arm trajectory. The simulated
 B601 follows the leader's six arm joints and gripper command, and holds its
 last target whenever leader data is unavailable.
 
+> 📖 **Isaac Sim 6.1 数据采集教程（中文）: [TUTORIAL_zh.md](TUTORIAL_zh.md)** —
+> 完整的安装、环境配置、采集、可视化与无硬件验证流程。
+
 ## Features
 
 - Real-to-Sim control from a reBot Arm 102 Leader at 60 Hz
@@ -38,17 +41,29 @@ place all three objects into the pencil cup.
 
 ## Requirements
 
-- Ubuntu with a working NVIDIA GPU and Isaac Sim 4.5
+- Ubuntu with a working NVIDIA GPU and Isaac Sim 6.1
 - Launch isaacsim from `~/isaacsim` by default, `ISAACSIM_ROOT` set to a
   different installation directory
+- `git-lfs` installed before cloning (the robot, workspace, and stationery USD
+  assets are stored with Git LFS; without it only pointer files are downloaded)
 - A reBot Arm 102 Leader connected through USB-UART
 
 ## Installation
 
 ### IsaacSim
 
-Please refer to the documentation provided by nvidia to install isaac sim.
-`https://docs.isaacsim.omniverse.nvidia.com/4.5.0/installation/index.html`
+Please refer to the documentation provided by nvidia to install Isaac Sim 6.1:
+`https://docs.isaacsim.omniverse.nvidia.com/latest/installation/quick-install.html`
+
+For a standalone Linux installation, extract the
+`isaac-sim-standalone-6.1.0-linux-x86_64.zip` package into `~/isaacsim` and run
+the post-install script once:
+
+```bash
+unzip isaac-sim-standalone-6.1.0-linux-x86_64.zip -d ~/isaacsim
+cd ~/isaacsim
+./post_install.sh
+```
 
 ### Lerobot
 
@@ -73,8 +88,9 @@ source .venv/bin/activate
 # Upgrade pip (optional)
 uv pip install --upgrade pip
 
-# Install lerobot main project (editable mode)
-uv pip install -e ./lerobot
+# Install lerobot main project (editable mode, with the dataset extra
+# required by the Isaac Sim episode writer and the dataset visualizer)
+uv pip install -e "./lerobot[dataset]"
 
 # Add local dependency packages (editable install)
 uv pip install -e ./lerobot-teleoperator-rebot-arm-102
@@ -84,8 +100,14 @@ uv pip install motorbridge
 
 ### This project
 ```bash
+sudo apt update
+sudo apt install -y git-lfs
+
 cd ~
 git clone https://github.com/yuyoujiang/rebot-arm-dli-isaacsim.git
+cd rebot-arm-dli-isaacsim
+git lfs install
+git lfs pull
 ```
 
 ## Leader calibration

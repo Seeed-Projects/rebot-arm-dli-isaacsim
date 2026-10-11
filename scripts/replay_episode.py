@@ -61,7 +61,11 @@ def main() -> int:
         episodes=[args.episode],
         download_videos=False,
     )
-    dataset._ensure_hf_dataset_loaded()
+    # Newer lerobot releases load `hf_dataset` on access and dropped the
+    # explicit loader; older ones need the call first.
+    ensure_loaded = getattr(dataset, "_ensure_hf_dataset_loaded", None)
+    if ensure_loaded is not None:
+        ensure_loaded()
     rows = dataset.hf_dataset
     fps = float(dataset.fps)
     if len(rows) == 0:

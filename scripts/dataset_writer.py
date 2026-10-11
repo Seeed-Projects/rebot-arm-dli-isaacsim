@@ -11,6 +11,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+from lerobot.configs.video import RGBEncoderConfig
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
 
@@ -75,7 +76,7 @@ def _load_or_create(
             repo_id=repo_id,
             root=root,
             batch_encoding_size=1,
-            vcodec="h264",
+            rgb_encoder=RGBEncoderConfig(vcodec="h264"),
         )
         if int(dataset.fps) != fps:
             raise ValueError(
@@ -94,7 +95,7 @@ def _load_or_create(
         robot_type="seeed_b601_rs_follower",
         use_videos=True,
         batch_encoding_size=1,
-        vcodec="h264",
+        rgb_encoder=RGBEncoderConfig(vcodec="h264"),
     )
 
 
