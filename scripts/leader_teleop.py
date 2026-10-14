@@ -537,7 +537,13 @@ class LeaderTeleop:
 
     def setup(self) -> None:
         if ARGS.rebuild_scene or not self.scene_path.exists():
-            build_scene(self.scene_path, variant=ARGS.variant)
+            # Path Tracing keeps the recorded camera images free of the
+            # Real-Time speckle on GPUs without DLSS-RR; see TUTORIAL §10.
+            build_scene(
+                self.scene_path,
+                variant=ARGS.variant,
+                render_mode="PathTracing",
+            )
         if not open_stage(str(self.scene_path)):
             raise RuntimeError(f"Unable to open scene: {self.scene_path}")
         self._wait_for_stage()
@@ -582,7 +588,11 @@ class LeaderTeleop:
                 "[scene] An outdated scene was detected; rebuilding "
                 + "、".join(reasons)
             )
-            build_scene(self.scene_path, variant=ARGS.variant)
+            build_scene(
+                self.scene_path,
+                variant=ARGS.variant,
+                render_mode="PathTracing",
+            )
             if not open_stage(str(self.scene_path)):
                 raise RuntimeError(f"Unable to reopen scene: {self.scene_path}")
             self._wait_for_stage()

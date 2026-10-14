@@ -226,7 +226,7 @@ ISAACSIM_ROOT=/path/to/isaacsim ./run.sh --leader-port /dev/ttyUSB0
 
 无主臂时同样可以先跑回归验证：`./run.sh --variant stationery --test`。想重新生成上面的截图，运行 `"$ISAACSIM_ROOT/python.sh" scripts/capture_camera_previews.py --variant stationery`。
 
-> 上方截图由 `scripts/capture_camera_previews.py` 以 Path Tracing 模式渲染生成（headless 截图只有少量帧，收敛时间可忽略）。实时 GUI 视口在 8GB 显卡上仍可能出现噪点，属第 10 节所述已知限制。
+> 两个任务场景文件都保存了 `Path Tracing` 渲染模式，因此 GUI 视口与截图同样干净（headless 截图也是用它渲染的）。显存较小的机器上如遇卡顿，见第 10 节的缓解措施。
 
 ## 7. 数据集检查、可视化与回放
 
@@ -311,9 +311,9 @@ cd ~/rebot-arm-dli-isaacsim
 **画面噪点（"雪花"）**
 
 Isaac Sim 6.1 默认使用 `RTX - Real-Time 2.0` 渲染器，其降噪依赖 DLSS Ray Reconstruction（目前仅 RTX 40 系及以上显卡支持）。
-在 RTX 30 系等不支持该特性的显卡上，**GUI 视口与录制的相机图像会出现明显的逐像素噪点**。功能不受影响（采集、保存、可视化、回放均正常），但图像的训练数据质量会受影响。该问题正在持续排查中。
+在 RTX 30 系等不支持该特性的显卡上，**GUI 视口与录制的相机图像会出现明显的逐像素噪点**。功能不受影响（采集、保存、可视化、回放均正常），但图像的训练数据质量会受影响。
 
-**注意：不要使用 `RTX - Interactive (Path Tracing)` 渲染模式。** 该模式画面干净但负载极高，在显存较小的显卡（如 RTX 3060 12GB）上可能导致系统死机。请保持默认渲染模式。
+**本工程的场景文件已把渲染模式保存为 `RTX - Interactive (Path Tracing)`**（场景里的 `rtx:rendermode` 标记）：该模式逐帧累积收敛、不依赖 DLSS，因此相机画面干净无噪点，采集出的数据也更适合训练。代价是渲染负载更高——显存充足（≥12GB）时体验流畅；在 8GB 等较小显存的机器上如果明显卡顿，可参考下面"系统卡死"一节的缓解措施，或在视口渲染设置中切回 `RTX - Real-Time 2.0`（画面会重新出现噪点）。
 
 **系统卡死（桌面无响应）**
 
@@ -322,7 +322,7 @@ Isaac Sim 6.1 默认使用 `RTX - Real-Time 2.0` 渲染器，其降噪依赖 DLS
 在显存较小的显卡（如 8GB 笔记本 GPU）上，重负载渲染可能拖死桌面合成器，表现为"电脑卡死"，而应用本身通常没有崩溃（Isaac 日志里能找到完整的 26 分钟运行记录和正常退出）。本工程默认做了两项防护：
 
 - **主循环限帧到 60 Hz**（`scripts/leader_teleop.py`：把 `app.runLoops.main.rateLimitFrequency` 从默认 120 调到 60，与主臂数据 60 Hz 对等），给 GPU 留出余量；
-- 关闭 **`RTX - Interactive (Path Tracing)`** 的持久开关（`Preferences → Rendering → RTX Renderers` 里不要勾选；勾选状态会跨启动保留）。
+- 必要时把渲染模式切回 **`RTX - Real-Time 2.0`**（在视口渲染设置或 `Preferences → Rendering → RTX Renderers` 中切换），降低渲染负载；代价是相机画面重新出现噪点。
 
 进一步缓解：用 `./run.sh --single-viewport` 少开相机视口、关闭其它占显卡的程序（浏览器/微信等）、或把屏幕刷新率调低到 60 Hz。若仍卡顿，可在 Preferences 中改勾 `Enable RTX - Real-Time (Deprecated)` 并取消 `Real-Time 2.0`（旧实时渲染器用 OptiX 降噪，不依赖 DLSS）。
 
