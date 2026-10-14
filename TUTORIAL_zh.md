@@ -200,10 +200,33 @@ ISAACSIM_ROOT=/path/to/isaacsim ./run.sh --leader-port /dev/ttyUSB0
 
 ```bash
 ./run.sh --variant vials        # 默认：三个小瓶放入瓶架
-./run.sh --variant stationery   # 两支笔和橡皮放入固定笔筒（原文具任务）
+./run.sh --variant stationery   # 可选：两支笔和橡皮放入固定笔筒
 ```
 
-`stationery` 变体首次启动会自动生成场景 `scenes/rebot_stationery_pencil_cup.usda`，数据写入 `datasets/rebot_stationery_pencil_cup`，任务文本为 `Put the two pens and the eraser into the pencil cup`。对应的无硬件验证：`./run.sh --variant stationery --test`；相机预览截图：`.../python.sh scripts/capture_camera_previews.py --variant stationery`。
+### 可选任务案例：把两支笔和橡皮放进笔筒
+
+如果想在仿真中练习**原文具任务**，加载 `stationery` 场景即可——固定笔筒放在工作面 `(-0.16, 0.12) m` 处，两支笔（红、蓝）和一块橡皮作为可抓取物体落在工作面上，机器人、围栏与三路相机的位置和默认场景完全一致。首次启动会自动生成场景文件 `scenes/rebot_stationery_pencil_cup.usda`，无需手动构建：
+
+```bash
+./run.sh --variant stationery
+```
+
+按 `R` 重置后，三路相机的画面如下（`front` 与 `external` 是数据集实际记录的两路视频流）：
+
+| ![front](media/camera_previews/preview_stationery_front_seed601.png) | ![side](media/camera_previews/preview_stationery_side_seed601.png) | ![external](media/camera_previews/preview_stationery_external_seed601.png) |
+|---|---|---|
+| 腕部相机 `front`（录制） | 侧视相机 `side`（仅观察） | 顶部相机 `external`（录制） |
+
+采集流程与默认场景完全相同：`R` 重置并随机化 → `S` 开始/结束录制 → `C` 丢弃。成功判定为三件文具都稳定放进笔筒（终端出现 `[SUCCESS]`）。数据写入独立目录，不会和默认场景的数据混在一起：
+
+```bash
+~/rebot-arm-dli-isaacsim/datasets/rebot_stationery_pencil_cup
+# 任务文本: Put the two pens and the eraser into the pencil cup
+```
+
+无主臂时同样可以先跑回归验证：`./run.sh --variant stationery --test`。想重新生成上面的截图，运行 `"$ISAACSIM_ROOT/python.sh" scripts/capture_camera_previews.py --variant stationery`。
+
+> 上方截图拍摄于 8GB 笔记本 GPU，画面噪点是第 10 节所述的已知渲染限制；在建议的 ≥12GB RTX 40 系显卡上加载同一场景，相机画面是干净的。
 
 ## 7. 数据集检查、可视化与回放
 
