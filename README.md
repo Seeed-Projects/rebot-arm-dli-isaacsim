@@ -20,9 +20,9 @@ last target whenever leader data is unavailable.
 - Gravity-resistant, low-force dual-finger gripper control based on
   [Seeed PR #21](https://github.com/Seeed-Projects/reBot-Isaacsim/pull/21)
 - High-friction thin-object contact and configurable near-field grasp assist
-- Two recorded cameras: wrist-mounted `front` and fixed `side`
+- Two recorded cameras: wrist-mounted `front` and overhead `external`
 - One unrecorded, freely adjustable Isaac Sim debug viewport
-- Domain randomization for object poses, masses, lighting, and the wrist camera
+- Domain randomization for object poses, masses, and lighting
 - LeRobot Dataset v3 recording with `front` and `side` images
 - Portable, project-local USD assets
 
@@ -30,18 +30,26 @@ last target whenever leader data is unavailable.
 
 The workspace contains:
 
-- one pencil;
-- one ballpoint pen;
-- one eraser;
-- one fixed pencil cup.
+- three opaque vials (SO-101 workshop assets, Ø34 × 116 mm);
+- one fixed vial rack with four Ø32 slots, centred in front of the robot
+  (slot centres at `(-0.190, 0.090)`, `(-0.190, 0.150)`, `(-0.130, 0.090)`
+  and `(-0.130, 0.150) m`).
 
 Press `R` to reset the objects. They are spawned above separate areas of the
 workspace and fall onto the work surface under gravity. Use the leader arm to
-place all three objects into the pencil cup.
+stand each vial in a slot. Both assets keep their own materials; the vial has
+a blue cap and the rack is orange.
 
 ## Requirements
 
-- Ubuntu with a working NVIDIA GPU and Isaac Sim 6.1
+> ⚠️ **Use an NVIDIA RTX GPU with at least 12 GB of VRAM.** With 8 GB
+> (e.g. 8 GB laptop GPUs) the scene's render load can starve the desktop
+> compositor and freeze the whole machine within minutes — this was
+> reproduced twice during development, with the built-in mitigations and
+> `--single-viewport` enabled. See `TUTORIAL_zh.md` §1 and §10.
+
+- Ubuntu with a working NVIDIA GPU (≥ 12 GB VRAM recommended; 8 GB risks a
+  desktop freeze) and Isaac Sim 6.1
 - Launch isaacsim from `~/isaacsim` by default, `ISAACSIM_ROOT` set to a
   different installation directory
 - `git-lfs` installed before cloning (the robot, workspace, and stationery USD
@@ -245,25 +253,37 @@ To disable grasp assist and use only PhysX contact and friction:
 
 ## Cameras
 
-The GUI exposes three views:
+The GUI exposes four views:
 
 1. the default adjustable Isaac Sim viewport, used only for debugging;
 2. `front`, mounted on the wrist and recorded;
-3. `side`, fixed inside the enclosure and recorded.
+3. `side`, fixed inside the enclosure, shown for reference but not recorded;
+4. `external`, the overhead data-collection camera, recorded.
 
-The recorded cameras run at `640x480`, 30 FPS. Both `front` and `side`
+The recorded cameras run at `640x480`, 30 FPS. Both `front` and `external`
 therefore use the dataset image shape `[480, 640, 3]` (height, width, RGB).
 
-- `front`: `/World/Robot/link6/FrontCamera`
+- `front`: `/World/Robot/link6/UVC32Mount/UVC32Camera/FrontCamera`
 - `side`: `/World/Cameras/Side`
+- `external`: `/World/Cameras/External`
 
 The side camera is located at `[0.37, -0.05, 0.60] m` and points toward
-`[0.00, 0.25, 0.16] m`. It uses a `9.5 mm` wide-angle focal length.
+`[0.00, 0.25, 0.16] m`. It uses a `9.5 mm` wide-angle focal length. It is
+shown for reference only; the recorded pair is `front` + `external`.
 
-The wrist camera uses a converted version of Seeed's UVC32 mount. The mount is
-rotated onto the upper side of the gripper and pitched toward the fingertip
-workspace. Its visuals have no mass or collision and therefore do not affect
-robot dynamics.
+The external camera stands on the work surface on the
+`data-collection-camera-mount-v2` frame: centred in X, its 590 mm mast behind
+the wrist, with the camera itself at `[0.00, 0.235, 0.586] m` looking straight
+down. Its visuals are render-only, and it is one of the two recorded streams.
+To record the fixed `side` view instead, swap the camera names in
+`CAMERA_NAMES` (`scripts/episode_recorder.py`, `scripts/dataset_writer.py`)
+and in `_capture_record_frame` (`scripts/leader_teleop.py`).
+
+The wrist camera uses a converted version of Seeed's UVC32 mount, placed from
+Seeed's own wrist-camera assembly, so the bracket's clamp sits on the wrist
+axis and the camera looks along the board's plate normal. The camera's pose and
+field of view are derived from the modelled lens, and its visuals have no mass
+or collision, so they do not affect robot dynamics.
 
 Use `--single-viewport` to hide the two floating camera windows while keeping
 both recording streams active.
@@ -273,10 +293,13 @@ both recording streams active.
 At startup and after pressing `R`, the application randomizes:
 
 - stationery XY position, yaw, and mass;
-- dome and key-light intensity and color;
-- a small wrist-camera pose and focal-length range.
+- dome and key-light intensity and color.
 
-The pencil cup, enclosure, and side camera remain fixed. Configuration lives in
+The pencil cup, enclosure, and both cameras remain fixed. The wrist camera sits
+at the front of the modelled UVC32 lens and looks along its axis, so the
+recorded view matches the camera model exactly; widen `position_jitter_m`,
+`target_jitter_m` or `focal_length_mm` under `front_camera` in
+`config/domain_randomization.json` to randomize it again. Configuration lives in
 `config/domain_randomization.json`.
 
 Run a fixed scene with:
@@ -304,7 +327,7 @@ Each episode includes:
 - `action`: six leader arm joints plus the gripper;
 - `observation.state`: six B601 follower joints plus the gripper;
 - `observation.images.front`;
-- `observation.images.side`;
+- `observation.images.external`;
 - task text: `Put the two pens and the eraser into the pencil cup`;
 - episode randomization and success metadata.
 
@@ -388,9 +411,10 @@ leader range differs.
 ```text
 rebot-arm-dli-isaacsim/
 ├── assets/
-│   ├── camera/UVC32_mount_portable.usd
-│   ├── rebot_physx/00-arm-rs_asm-v3.usd
-│   ├── stationery/stationery_models.usd
+│   ├── camera/                 # UVC32 wrist mount and external data-collection mount
+│   ├── newton_rebot_devarm/    # Newton-official reBot DevArm package (ported; unused by the scene)
+│   ├── rebot/                  # robot asset used by the scene (PhysX-tuned)
+│   ├── stationery/             # vial rack and vials (SO-101 workshop assets)
 │   └── workspace/box.usdz
 ├── config/
 │   ├── domain_randomization.json
@@ -410,6 +434,26 @@ rebot-arm-dli-isaacsim/
 ├── run.sh
 └── run_demo.sh
 ```
+
+`assets/newton_rebot_devarm/` is a verbatim copy of the Newton-official reBot
+DevArm package (URDF + STL meshes + a structured USD authored for the
+Newton/MuJoCo physics stack, MIT licensed). The teleoperation scene does not
+use it — the scene's robot is the PhysX-tuned asset under `assets/rebot/` — but
+it is kept in the repository for Newton-backend experiments and interop. See
+`assets/newton_rebot_devarm/PORTING_NOTES.md` for provenance, verified facts,
+and caveats.
+
+Verify the ported package (composition, joints, gripper coupling, filtered
+pairs, units and bounds):
+
+```bash
+cd ~/rebot-arm-dli-isaacsim
+"${ISAACSIM_ROOT:-$HOME/isaacsim}/python.sh" scripts/verify_newton_asset.py
+```
+
+It prints one PASS/FAIL line per check and exits non-zero on failure. Add
+`--render` to also write a preview image to
+`/tmp/newton_rebot_preview/newton_rebot.png` (needs the GPU).
 
 ## References
 

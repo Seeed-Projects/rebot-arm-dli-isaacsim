@@ -29,6 +29,18 @@ Licence Version 2 — Weakly Reciprocal (CERN-OHL-W-2.0). See
 `assets/camera/README.md` for conversion details. Preserve all notices and
 comply with the source license when redistributing modified design files.
 
+## Newton reBot DevArm assets
+
+Files under `assets/newton_rebot_devarm/` are a verbatim copy of the
+`seeed_rebot_devarm` package from
+[newton-physics/newton-assets](https://github.com/newton-physics/newton-assets)
+(commit `a0547548eaa966c2f5478bee496c3cfba1fa98fc`), ported on 2026-10-13. The
+upstream package is released under the MIT License (carried verbatim in
+`assets/newton_rebot_devarm/LICENSE`); it derives from the Seeed-Projects
+reBot-Isaacsim URDF and the MuJoCo Menagerie MJCF of the same robot. It is a
+Newton/MuJoCo-stack asset and is not used by the PhysX teleoperation pipeline;
+see `assets/newton_rebot_devarm/PORTING_NOTES.md`.
+
 ## Stationery Supplies
 
 Files under `assets/stationery/` are derived from Poly Haven's Stationery

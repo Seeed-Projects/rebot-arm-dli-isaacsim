@@ -3,11 +3,10 @@
   "rendering_dt": 0.008333333333333333,
   "robot_prim_path": "/World/Robot/root_joint",
   "target_prim_paths": {
-    "pen_red": "/World/Objects/PenRed",
-    "pen_blue": "/World/Objects/PenBlue",
-    "eraser": "/World/Objects/Eraser"
+    "vial_1": "/World/Objects/Vial1",
+    "vial_2": "/World/Objects/Vial2",
+    "vial_3": "/World/Objects/Vial3"
   },
-  "pencil_cup_prim_path": "/World/Environment/PencilCup",
   "workspace_prim_path": "/World/WorkspaceBox",
   "assist_joint_path": "/World/GraspAssistJoint",
   "assist_body_path": "/World/Robot/link6",
@@ -25,7 +24,7 @@
   ],
   "gripper": {
     "opened_m": 0.045,
-    "closed_m": 0.012
+    "closed_m": 0.034
   },
   "poses_deg": {
     "home": [
@@ -69,40 +68,32 @@
     "lift": 3.0,
     "hold": 2.0
   },
-  "test_object_name": "pen_red",
+  "test_object_name": "vial_1",
   "test_object_pose": {
     "position": [
       0.0,
       0.0355169653,
-      0.1193964749
+      0.117
     ],
     "orientation_wxyz": [
-      0.6532814824,
-      0.2705980501,
-      0.2705980501,
-      -0.6532814824
+      1.0,
+      0.0,
+      0.0,
+      0.0
     ]
   },
   "assist_grasp_offset_m": [
     0.0,
     0.0,
-    0.09121
+    0.118
   ],
   "assist_grasp_orientation_wxyz": [
+    1.0,
     0.0,
-    -0.7071068,
     0.0,
-    -0.7071068
+    0.0
   ],
   "success_min_lift_m": 0.08,
-  "pencil_cup": {
-    "center_xy_m": [-0.16, 0.12],
-    "success_radius_m": 0.038,
-    "success_min_z_m": 0.01,
-    "success_max_z_m": 0.16,
-    "success_max_speed_mps": 0.25,
-    "success_settle_time_s": 0.35
-  },
   "camera": {
     "eye": [
       0.37,
@@ -114,5 +105,17 @@
       0.25,
       0.16
     ]
+  },
+  "vial_rack_prim_path": "/World/Environment/VialRack",
+  "vial_rack": {
+    "center_xy_m": [
+      -0.16,
+      0.12
+    ],
+    "success_radius_m": 0.055,
+    "success_min_z_m": 0.005,
+    "success_max_z_m": 0.12,
+    "success_max_speed_mps": 0.25,
+    "success_settle_time_s": 0.35
   }
 }

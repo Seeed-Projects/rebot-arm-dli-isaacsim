@@ -11,7 +11,6 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from lerobot.configs.video import RGBEncoderConfig
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
 
@@ -24,7 +23,7 @@ JOINT_NAMES = [
     "wrist_roll.pos",
     "gripper.pos",
 ]
-CAMERA_NAMES = ("front", "side")
+CAMERA_NAMES = ("front", "external")
 
 
 def _parse_args() -> argparse.Namespace:
@@ -49,7 +48,7 @@ def _features(
             "shape": (height, width, 3),
             "names": ["height", "width", "channels"],
         },
-        "observation.images.side": {
+        "observation.images.external": {
             "dtype": "video",
             "shape": (height, width, 3),
             "names": ["height", "width", "channels"],
@@ -76,7 +75,7 @@ def _load_or_create(
             repo_id=repo_id,
             root=root,
             batch_encoding_size=1,
-            rgb_encoder=RGBEncoderConfig(vcodec="h264"),
+            vcodec="h264",
         )
         if int(dataset.fps) != fps:
             raise ValueError(
@@ -95,7 +94,7 @@ def _load_or_create(
         robot_type="seeed_b601_rs_follower",
         use_videos=True,
         batch_encoding_size=1,
-        rgb_encoder=RGBEncoderConfig(vcodec="h264"),
+        vcodec="h264",
     )
 
 
@@ -143,7 +142,7 @@ def main() -> int:
                     "action": actions[frame_index],
                     "observation.state": states[frame_index],
                     "observation.images.front": images["front"],
-                    "observation.images.side": images["side"],
+                    "observation.images.external": images["external"],
                     "task": metadata["task"],
                 }
             )

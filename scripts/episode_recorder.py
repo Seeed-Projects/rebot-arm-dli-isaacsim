@@ -17,7 +17,7 @@ import cv2
 import numpy as np
 
 
-CAMERA_NAMES = ("front", "side")
+CAMERA_NAMES = ("front", "external")
 
 
 class EpisodeRecorder:

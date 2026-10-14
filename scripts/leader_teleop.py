@@ -24,11 +24,13 @@ DEFAULT_DR_CONFIG = PROJECT_ROOT / "config" / "domain_randomization.json"
 DEFAULT_SCENE = PROJECT_ROOT / "scenes" / "rebot_stationery_sorting.usda"
 BRIDGE_SCRIPT = PROJECT_ROOT / "scripts" / "leader_bridge.py"
 DATASET_WRITER_SCRIPT = PROJECT_ROOT / "scripts" / "dataset_writer.py"
-TARGET_COLLIDER_SUFFIX = "/Mesh"
+# The vial asset ships its own collider mesh, and its shape is expressed as a
+# box so the proximity heuristic does not have to assume an axis.
+TARGET_COLLIDER_SUFFIX = "/collider"
 TARGET_GRASP_GEOMETRY = {
-    "pen_red": {"half_length": 0.068, "radius": 0.0040},
-    "pen_blue": {"half_length": 0.078, "radius": 0.0047},
-    "eraser": {"half_extents": (0.0223, 0.0093, 0.0053)},
+    "vial_1": {"half_extents": (0.017, 0.017, 0.058)},
+    "vial_2": {"half_extents": (0.017, 0.017, 0.058)},
+    "vial_3": {"half_extents": (0.017, 0.017, 0.058)},
 }
 
 
@@ -76,7 +78,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--single-viewport",
         action="store_true",
-        help="Keep only the main debug viewport; front/side capture still runs in the background",
+        help="Keep only the main debug viewport; front/external capture still runs in the background",
     )
     parser.add_argument("--dataset-root", type=Path)
     parser.add_argument("--repo-id")
@@ -90,7 +92,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--test-recording",
         action="store_true",
-        help="Also validate front/side cameras and LeRobot dataset writing during --test",
+        help="Also validate front/external cameras and LeRobot dataset writing during --test",
     )
     parser.add_argument("--test-packets", type=int, default=330)
     args = parser.parse_args()
@@ -109,6 +111,17 @@ except ImportError as exc:
     ) from exc
 
 simulation_app = SimulationApp({"headless": ARGS.headless or ARGS.test})
+
+if not (ARGS.headless or ARGS.test):
+    # The default main-loop cap is 120 Hz, which on laptop GPUs keeps the
+    # renderer pinned at its maximum frame rate; the desktop compositor then
+    # starves and the whole machine appears to freeze.  Throttle the loop to
+    # the 60 Hz leader stream so the GPU keeps headroom for the desktop.
+    import carb
+
+    _settings = carb.settings.get_settings()
+    _settings.set_bool("/app/runLoops/main/rateLimitEnabled", True)
+    _settings.set_int("/app/runLoops/main/rateLimitFrequency", 60)
 
 from isaacsim.core.api import World
 from isaacsim.core.prims import SingleArticulation, SingleRigidPrim
@@ -274,8 +287,8 @@ class LeaderTeleop:
             str(name): str(path)
             for name, path in self.grasp_config["target_prim_paths"].items()
         }
-        self.pencil_cup_path = str(
-            self.grasp_config["pencil_cup_prim_path"]
+        self.vial_rack_path = str(
+            self.grasp_config["vial_rack_prim_path"]
         )
         self.workspace_path = str(
             self.grasp_config["workspace_prim_path"]
@@ -364,18 +377,18 @@ class LeaderTeleop:
             self.grasp_config["assist_grasp_orientation_wxyz"],
             dtype=np.float64,
         )
-        cup_cfg = self.grasp_config["pencil_cup"]
-        self.cup_center_xy = np.asarray(
-            cup_cfg["center_xy_m"], dtype=np.float64
+        rack_cfg = self.grasp_config["vial_rack"]
+        self.rack_center_xy = np.asarray(
+            rack_cfg["center_xy_m"], dtype=np.float64
         )
-        self.cup_success_radius = float(cup_cfg["success_radius_m"])
-        self.cup_success_min_z = float(cup_cfg["success_min_z_m"])
-        self.cup_success_max_z = float(cup_cfg["success_max_z_m"])
-        self.cup_success_max_speed = float(
-            cup_cfg["success_max_speed_mps"]
+        self.rack_success_radius = float(rack_cfg["success_radius_m"])
+        self.rack_success_min_z = float(rack_cfg["success_min_z_m"])
+        self.rack_success_max_z = float(rack_cfg["success_max_z_m"])
+        self.rack_success_max_speed = float(
+            rack_cfg["success_max_speed_mps"]
         )
-        self.cup_success_settle_time = float(
-            cup_cfg["success_settle_time_s"]
+        self.rack_success_settle_time = float(
+            rack_cfg["success_settle_time_s"]
         )
 
         self.world: World | None = None
@@ -402,8 +415,10 @@ class LeaderTeleop:
         self.bridge_process: subprocess.Popen | None = None
         self.side_camera: Camera | None = None
         self.front_camera: Camera | None = None
+        self.external_camera: Camera | None = None
         self.side_viewport = None
         self.front_viewport = None
+        self.external_viewport = None
         self.randomizer: DomainRandomizer | None = None
         self.recorder: EpisodeRecorder | None = None
         self.keyboard = TeleopKeyboard(
@@ -428,8 +443,8 @@ class LeaderTeleop:
         self.max_object_lift = 0.0
         self.episode_grasped = False
         self.episode_success = False
-        self.cup_settle_elapsed = 0.0
-        self.objects_in_cup: set[str] = set()
+        self.rack_settle_elapsed = 0.0
+        self.objects_in_rack: set[str] = set()
         self.current_randomization: dict = {}
         self.sim_elapsed = 0.0
         self.next_record_time = 0.0
@@ -473,9 +488,11 @@ class LeaderTeleop:
             self.dr_config["side_camera"]["prim_path"],
             self.dr_config["front_camera"]["prim_path"],
             self.dr_config["front_camera"]["mount_prim_path"],
+            self.dr_config["external_camera"]["prim_path"],
+            self.dr_config["external_camera"]["mount_prim_path"],
             "/World/Looks/StationeryPhysics",
             "/World/Environment/Table/Top",
-            self.pencil_cup_path,
+            self.vial_rack_path,
             self.workspace_path,
             *self.target_paths.values(),
         ]
@@ -494,7 +511,7 @@ class LeaderTeleop:
         ):
             reasons = []
             if missing_scene_content:
-                reasons.append("front/side cameras, table, stationery, or fixed pencil cup")
+                reasons.append("front/side/external cameras, table, vials, or fixed vial rack")
             if missing_gripper_fix:
                 reasons.append("PR #21 gravity-resistant gripper drives and 1:1 linkage")
             if missing_robot_appearance:
@@ -527,7 +544,7 @@ class LeaderTeleop:
         self.robot.initialize()
         for target in self.targets.values():
             target.initialize()
-        default_target = str(self.grasp_config.get("test_object_name", "pen_red"))
+        default_target = str(self.grasp_config.get("test_object_name", "vial_1"))
         self._set_active_target(default_target)
         self.side_camera = Camera(
             prim_path=self.dr_config["side_camera"]["prim_path"],
@@ -539,8 +556,14 @@ class LeaderTeleop:
             name="front_camera",
             resolution=self.record_resolution,
         )
+        self.external_camera = Camera(
+            prim_path=self.dr_config["external_camera"]["prim_path"],
+            name="external_camera",
+            resolution=self.record_resolution,
+        )
         self.side_camera.initialize()
         self.front_camera.initialize()
+        self.external_camera.initialize()
         assist_link_name = self.assist_body_path.rsplit("/", 1)[-1]
         self.assist_link_index = self.robot._articulation_view.get_link_index(
             assist_link_name
@@ -647,12 +670,21 @@ class LeaderTeleop:
                         position_x=700,
                         position_y=90,
                     )
+                    self.external_viewport = create_viewport_for_camera(
+                        "External Camera (Overhead)",
+                        self.dr_config["external_camera"]["prim_path"],
+                        width=640,
+                        height=480,
+                        position_x=1370,
+                        position_y=90,
+                    )
                     print(
                         "[camera] The main viewport remains an unrecorded debug view; "
-                        "opened the fixed side and wrist-mounted front camera viewports"
+                        "opened the side, wrist-mounted front and overhead external "
+                        "camera viewports"
                     )
             except Exception as exc:
-                print(f"[camera-warn] Unable to configure front/side camera viewports: {exc}")
+                print(f"[camera-warn] Unable to configure camera viewports: {exc}")
 
         self._reset_episode()
 
@@ -664,15 +696,15 @@ class LeaderTeleop:
         print(f"  Receiver: udp://{self.host}:{self.port}")
         print(f"  Grasp mode: {mode}")
         print(
-            "  Task: put two pens and one eraser into the fixed pencil cup "
-            f"({self.cup_center_xy[0]:.2f}, "
-            f"{self.cup_center_xy[1]:.2f})m"
+            "  Task: put the three vials into the fixed vial rack "
+            f"({self.rack_center_xy[0]:.2f}, "
+            f"{self.rack_center_xy[1]:.2f})m"
         )
         print(f"  Domain randomization: {dr_mode}; R=reset/randomize")
         if self.recording_enabled:
             print(
                 f"  Recording: S=start/stop, C=cancel; "
-                f"{self.record_fps} FPS with front/side cameras"
+                f"{self.record_fps} FPS with front/external cameras"
             )
             print(f"  Dataset: {self.dataset_root}")
         else:
@@ -723,7 +755,7 @@ class LeaderTeleop:
             ).GetKinematicEnabledAttr().Set(enabled)
 
     def _set_target_gripper_contacts_enabled(self, enabled: bool) -> None:
-        """Filter finger contacts while retaining table/cup contacts."""
+        """Filter finger contacts while retaining table/rack contacts."""
         if self.active_target_path is None:
             return
         collider = get_current_stage().GetPrimAtPath(
@@ -863,8 +895,8 @@ class LeaderTeleop:
         self.max_object_lift = 0.0
         self.episode_grasped = False
         self.episode_success = False
-        self.cup_settle_elapsed = 0.0
-        self.objects_in_cup = set()
+        self.rack_settle_elapsed = 0.0
+        self.objects_in_rack = set()
         self.min_grasp_distance = float("inf")
         objects = self.current_randomization["objects"]
         summary = ", ".join(
@@ -977,13 +1009,13 @@ class LeaderTeleop:
     def _capture_record_frame(self) -> None:
         if self.recorder is None or not self.recorder.recording:
             return
-        assert self.side_camera is not None
         assert self.front_camera is not None
+        assert self.external_camera is not None
         if self.sim_elapsed + 1e-9 < self.next_record_time:
             return
-        side = np.asarray(self.side_camera.get_rgba())
         front = np.asarray(self.front_camera.get_rgba())
-        if side.size == 0 or front.size == 0:
+        external = np.asarray(self.external_camera.get_rgba())
+        if front.size == 0 or external.size == 0:
             print("[camera-warn] RTX cameras have not produced images yet; skipping this frame")
             return
         self.recorder.capture(
@@ -991,7 +1023,7 @@ class LeaderTeleop:
             state=self._follower_state_vector(),
             images={
                 "front": front[:, :, :3],
-                "side": side[:, :, :3],
+                "external": external[:, :, :3],
             },
         )
         self.next_record_time += 1.0 / self.record_fps
@@ -1019,7 +1051,7 @@ class LeaderTeleop:
         self.max_observed_gripper = np.maximum(
             self.max_observed_gripper, gripper_positions
         )
-        in_cup: set[str] = set()
+        in_rack: set[str] = set()
         all_stable = True
         distances: dict[str, float] = {}
         for name, target in self.targets.items():
@@ -1031,16 +1063,16 @@ class LeaderTeleop:
                 target.get_linear_velocity(), dtype=np.float64
             )
             all_stable = all_stable and (
-                float(np.linalg.norm(velocity)) <= self.cup_success_max_speed
+                float(np.linalg.norm(velocity)) <= self.rack_success_max_speed
             )
             distance = float(
-                np.linalg.norm(position[:2] - self.cup_center_xy)
+                np.linalg.norm(position[:2] - self.rack_center_xy)
             )
             distances[name] = distance
             height_ok = (
-                self.cup_success_min_z
+                self.rack_success_min_z
                 <= float(position[2])
-                <= self.cup_success_max_z
+                <= self.rack_success_max_z
             )
             orientation_ok = True
             if name.startswith("pen_"):
@@ -1050,38 +1082,38 @@ class LeaderTeleop:
                 )
                 orientation_ok = abs(float(pen_axis[2])) >= 0.55
             if (
-                distance <= self.cup_success_radius
+                distance <= self.rack_success_radius
                 and height_ok
                 and orientation_ok
             ):
-                in_cup.add(name)
-        if in_cup != self.objects_in_cup:
-            self.objects_in_cup = in_cup
+                in_rack.add(name)
+        if in_rack != self.objects_in_rack:
+            self.objects_in_rack = in_rack
             print(
-                "[SORT] In pencil cup: "
-                + (", ".join(sorted(in_cup)) if in_cup else "none")
-                + f" ({len(in_cup)}/{len(self.targets)})"
+                "[SORT] In vial rack: "
+                + (", ".join(sorted(in_rack)) if in_rack else "none")
+                + f" ({len(in_rack)}/{len(self.targets)})"
             )
         released = (
             not self.grasp_attached
             and float(np.mean(gripper_positions))
             >= self.contact_lock_release
         )
-        all_in_cup = len(in_cup) == len(self.targets)
-        if all_in_cup and released and all_stable:
-            self.cup_settle_elapsed += self.physics_dt
+        all_in_rack = len(in_rack) == len(self.targets)
+        if all_in_rack and released and all_stable:
+            self.rack_settle_elapsed += self.physics_dt
         else:
-            self.cup_settle_elapsed = 0.0
+            self.rack_settle_elapsed = 0.0
 
         if (
             not self.episode_success
-            and self.cup_settle_elapsed >= self.cup_success_settle_time
+            and self.rack_settle_elapsed >= self.rack_success_settle_time
         ):
             self.episode_success = True
             print(
-                "[SUCCESS] Both pens and the eraser are stable in the pencil cup: "
+                "[SUCCESS] All three vials are stable in the rack: "
                 f"center distances={distances}, "
-                f"settle time={self.cup_settle_elapsed:.2f}s"
+                f"settle time={self.rack_settle_elapsed:.2f}s"
             )
 
     def _start_bridge(self) -> None:
@@ -1502,7 +1534,7 @@ class LeaderTeleop:
         )
         fixed_joint.GetLocalPos1Attr().Set(Gf.Vec3f(0.0))
         fixed_joint.GetLocalRot1Attr().Set(Gf.Quatf(1.0))
-        # Filter finger contacts while assisted, but retain table/cup
+        # Filter finger contacts while assisted, but retain table/rack
         # contact. The joint frame above is kept as diagnostic scene state;
         # it is intentionally not enabled in direct arm-control mode.
         self._set_target_collision_enabled(True)
@@ -1785,7 +1817,7 @@ class LeaderTeleop:
             camera_edges = self.recorder.last_image_edge_std
             images_ok = (
                 camera_edges["front"] >= 8.0
-                and camera_edges["side"] >= 8.0
+                and camera_edges["external"] >= 8.0
             )
             self.test_recording_ok = writer_ok and dataset_ok and images_ok
             print(
@@ -1810,6 +1842,12 @@ class LeaderTeleop:
             except Exception:
                 pass
             self.front_viewport = None
+        if self.external_viewport is not None:
+            try:
+                self.external_viewport.destroy()
+            except Exception:
+                pass
+            self.external_viewport = None
         if self.recorder is not None:
             if self.recorder.recording:
                 self.recorder.cancel()

@@ -39,7 +39,6 @@ except ModuleNotFoundError:
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = PROJECT_ROOT / "scenes" / "rebot_stationery_sorting.usda"
 ROBOT_ASSET = "../assets/rebot_physx/00-arm-rs_asm-v3.usd"
-STATIONERY_ASSET = "../assets/stationery/stationery_models.usd"
 CAMERA_MOUNT_ASSET = "../assets/camera/UVC32_mount_portable.usd"
 WORKSPACE_ASSET = "../assets/workspace/box.usdz"
 
@@ -49,40 +48,158 @@ WORKSPACE_COLLIDER_PATH = (
     f"{WORKSPACE_PATH}/box/Base_08q/tn__131_m6/tn__13_/Mesh"
 )
 WORKSPACE_LIGHT_PATH = f"{WORKSPACE_PATH}/box/DiskLight"
+# The authored enclosure measures 794 x 699.19 x 650 mm internally, with
+# 3 mm walls.  It is referenced once and rescaled so the interior reads
+# 760 x 600 x 700 mm.  The rescaling is pinned at the work surface (Z = 0)
+# and at WORKSPACE_Y_PIVOT, which places the resized interior at
+# Y = -65 .. +535 mm: that clears the robot's base plate at the rear
+# (+524.9 mm), the stationery's worst-case jittered pose (-53 mm) and the
+# side camera (-50 mm) at the front.  The walls follow the scale
+# (2.87 / 2.75 / 3.23 mm) and CAD details stretch by the same factors, so a
+# CAD export at the target size remains the better answer if the enclosure
+# ever has to match real hardware exactly.
+WORKSPACE_INTERIOR_M = Gf.Vec3d(0.794, 0.69919, 0.650)
+WORKSPACE_INTERIOR_TARGET_M = Gf.Vec3d(0.760, 0.600, 0.700)
+WORKSPACE_Y_PIVOT = 0.31186
+WORKSPACE_FLOOR_TOP_Z = 0.0
+WORKSPACE_MODEL_OFFSET_Z = -0.49846
+# The task objects: three opaque vials (SO-101 workshop assets) that go into
+# a 120 mm square vial rack.  Both assets carry their own materials, so the
+# scene must not override them, and both ship their own physics, so the scene
+# only tunes contact behaviour and mass.
+VIAL_ASSET = "../assets/stationery/Vial_opaque.usda"
+VIAL_RACK_ASSET = "../assets/stationery/Vial_rack_simple.usda"
+VIAL_RACK_PATH = "/World/Environment/VialRack"
+VIAL_RACK_COLLIDER_PATH = f"{VIAL_RACK_PATH}/Body1/Mesh/Mesh"
+# The rack ships an SDF collider with the contact offsets left unset, so the
+# importer gives it a 20 mm envelope while the slots clear the vial by only
+# ~1 mm; the vial was contact-held at the slot mouth and never entered.
+# Author a tight envelope and SDF band so the pair can actually meet inside
+# the slots.  (The vial side uses STATIONERY_CONTACT_OFFSET.)
+VIAL_RACK_CONTACT_OFFSET = 0.0003
+VIAL_RACK_SDF_MARGIN = 0.001
+VIAL_RACK_SDF_NARROW_BAND = 0.002
 TARGET_SPECS = {
-    "pen_red": ("/World/Objects/PenRed", "/Stationery/PenRed", 0.012),
-    "pen_blue": ("/World/Objects/PenBlue", "/Stationery/PenBlue", 0.012),
-    "eraser": ("/World/Objects/Eraser", "/Stationery/Eraser", 0.025),
+    "vial_1": ("/World/Objects/Vial1", "/Vial", 0.018),
+    "vial_2": ("/World/Objects/Vial2", "/Vial", 0.018),
+    "vial_3": ("/World/Objects/Vial3", "/Vial", 0.018),
 }
-PENCIL_CUP_PATH = "/World/Environment/PencilCup"
+# The rack asset's origin sits at one corner of its 120 mm footprint and 6 mm
+# below its base, so this seats that base on the work surface, centred where
+# the pencil cup used to be.
+VIAL_RACK_POSITION = Gf.Vec3d(-0.22, 0.06, 0.006)
+# The asset's own OmniPBR colour is (0.938, 0.586, 0.043), which the renderer
+# treats as linear and therefore shows as a pale yellow.  The scene keeps the
+# same material but re-authors the colour as the reference photo's coral
+# orange, i.e. the photo's lit-face sRGB #F77A58 converted to linear.  The
+# warm strip lights then render it a touch deeper in-scene, which matches the
+# photo's shaded faces.  Do not over-compensate for that lighting in the
+# albedo: it would read pink under any other exposure.
+VIAL_RACK_COLOR = Gf.Vec3f(0.943, 0.241, 0.130)
+# The vial is 116.5 mm tall with its origin 17 mm above its base, so its
+# centre of mass sits at the bbox centre.
+VIAL_CENTER_OF_MASS_Z = 0.0413
 GRIPPER_BODY_PATH = f"{ROBOT_PATH}/link6"
 ASSIST_JOINT_PATH = "/World/GraspAssistJoint"
 SIDE_CAMERA_PATH = "/World/Cameras/Side"
-FRONT_CAMERA_PATH = f"{GRIPPER_BODY_PATH}/FrontCamera"
 WRIST_CAMERA_MOUNT_PATH = f"{GRIPPER_BODY_PATH}/UVC32Mount"
-WRIST_CAMERA_BOARD_PATH = f"{GRIPPER_BODY_PATH}/UVC32Camera"
+WRIST_CAMERA_BOARD_PATH = f"{WRIST_CAMERA_MOUNT_PATH}/UVC32Camera"
+FRONT_CAMERA_PATH = f"{WRIST_CAMERA_BOARD_PATH}/FrontCamera"
 STATIONERY_PHYSICS_MATERIAL_PATH = "/World/Looks/StationeryPhysics"
 GRIPPER_PHYSICS_MATERIAL_PATH = "/World/Looks/GripperPhysics"
 GRIPPER_COLLIDER_PATHS = (
     f"{ROBOT_PATH}/gripper_left/collisions",
     f"{ROBOT_PATH}/gripper_right/collisions",
 )
-PENCIL_CUP_CENTER = Gf.Vec3d(-0.16, 0.12, 0.0365904756)
+# The wrist-camera rig is placed from Seeed's own assembly numbers instead of
+# being measured off the bracket, because the bracket revision in
+# assets/camera and the frames below come from the same CAD:
+#   Rebot_Arm_description/RS/urdf/ReBot_Arm_RS.urdf   link6 -> gripper_end
+#   Rebot_Arm_description/Camera/urdf/uvc32.urdf      gripper_end -> mount -> board
+# The published mount transform expects a mesh whose origin sits at the
+# bracket's clamp centre; Rebot_Arm_description/Camera/scripts/
+# build-uvc32-assets.py builds exactly that mesh.  The STEP in assets/camera
+# keeps the CAD datum instead, which sits at (0, 7.110, 24.310) mm from the
+# clamp centre, so that offset is folded into the numbers below.  The clamp's
+# wrap axis then lands on link6 +Z (the wrist axis) within 0.25 mm.
+WRIST_CAMERA_MOUNT_POSITION = Gf.Vec3d(
+    0.0231517170, -0.0002007298, 0.0477621244
+)
+WRIST_CAMERA_MOUNT_ORIENT = Gf.Quatd(
+    0.7062529194, Gf.Vec3d(-0.0026105535, -0.0110436469, -0.7078686578)
+)
+# Back-centre of the 32 x 32 x 1.6 mm board, which sits on the bracket's
+# camera plate, plus the board frame the lens and the camera share.  These are
+# link6-relative; the rig itself nests bracket -> board -> lens/camera, so the
+# children's own transforms are parent-relative (see _relative_pose).
+WRIST_CAMERA_BOARD_POSITION = Gf.Vec3d(
+    0.1053627295, -0.0004402568, 0.0456517470
+)
+WRIST_CAMERA_BOARD_ORIENT = Gf.Quatd(
+    0.6728290044, Gf.Vec3d(-0.2202297202, -0.2067096982, 0.6753303649)
+)
+# Optical origin: 9.9 mm out along the board normal, at the lens front.
+WRIST_CAMERA_LENS_FRONT_M = 0.0099
+# Distance from the optical origin to the look-at point, matching the previous
+# rig's focus distance.
+WRIST_CAMERA_FOCUS_M = 0.15358633
+WRIST_CAMERA_FORWARD = WRIST_CAMERA_BOARD_ORIENT.Transform(
+    Gf.Vec3d(0.0, 0.0, 1.0)
+).GetNormalized()
+# Horizontal field of view matching the real wrist camera's lens, which is a
+# normal-angle module: the previous 4.2 mm (a 136 deg fisheye) was calibrated
+# against a different stream.  11.04 mm with the 20.955 mm aperture below is
+# 87 deg horizontally, the same class as the D405/D435 wrist cameras the
+# official assembly compares this UVC module to.
+# config/domain_randomization.json carries the same value, which is what the
+# reset actually applies.
+WRIST_CAMERA_FOCAL_MM = 11.04
 
-# The official Seeed UVC32 mount places the 32 mm camera board on a plane
-# pitched 15 degrees toward the gripper centreline. The STEP's +Y extension
-# is rotated onto link6 +X (above the gripper in the real assembly), and its
-# origin is seated on motor_7's front face rather than at link6's rear face.
-WRIST_CAMERA_PITCH_DEG = 15.0
-WRIST_CAMERA_MOUNT_YAW_DEG = -90.0
-WRIST_CAMERA_MOUNT_Z = 0.09
-WRIST_CAMERA_BOARD_CENTER = Gf.Vec3d(0.0685, 0.0, 0.08444)
-WRIST_CAMERA_EYE = Gf.Vec3d(0.065394, 0.0, 0.096031)
-# The recorded grab_tube_0 front view centres the work area between the two
-# fingertips, so the optical axis is angled slightly further inward than the
-# bare 15-degree mounting plane.
-WRIST_CAMERA_TARGET = Gf.Vec3d(0.0, 0.0, 0.235)
-WRIST_CAMERA_UP = Gf.Vec3d(0.9048, 0.0, 0.4258)
+# External data-collection camera on Seeed's "data-collection-camera-mount-v2"
+# stand.  The pose below is the hand-placed calibration from the working scene
+# (2026-10-13) and must survive rebuilds, so it is authored verbatim here:
+# the mount sits just in front of the work surface's rear edge, rotated 180
+# degrees about the local (0, 1, 1) diagonal (mast up, camera arm toward the
+# robot), its top arm piece is relocated to carry the camera, and the two
+# middle arm sections are switched off.  The camera hangs at (0, 60, 650) mm,
+# tilted ~13 degrees toward +Y, focal 16 mm (~66 deg horizontal).  The camera
+# matrix is not orthonormal (it is exactly as placed in the GUI), so it is
+# authored as a raw matrix instead of an eye/target/up look-at; the
+# randomizer never rewrites this camera.
+EXTERNAL_CAMERA_MOUNT_ASSET = (
+    "../assets/camera/data_collection_camera_mount.usd"
+)
+EXTERNAL_CAMERA_MOUNT_PATH = "/World/Cameras/ExternalMount"
+EXTERNAL_CAMERA_PATH = "/World/Cameras/External"
+EXTERNAL_CAMERA_MOUNT_POSITION = Gf.Vec3d(0.0, -0.022780342815431287, 0.015)
+EXTERNAL_CAMERA_MOUNT_ORIENT = Gf.Quatd(
+    6.123233995736766e-17,
+    Gf.Vec3d(4.329780281177466e-17, 0.7071067811865476, 0.7071067811865475),
+)
+EXTERNAL_CAMERA_ARM_PIECE = "tn__0001_ASM_/tn__1_bmf0zaj0/Mesh"
+EXTERNAL_CAMERA_ARM_PIECE_TRANSLATE = Gf.Vec3d(
+    0.06020525070086105, -0.012551881792145479, 0.6347620242140731
+)
+EXTERNAL_CAMERA_REMOVED_PIECES = ("tn__0001_ASM_/tn__2_bmf0zaj0",
+                                  "tn__0001_ASM_/tn__taKka7")
+EXTERNAL_CAMERA_FOCAL_MM = 16.0
+EXTERNAL_CAMERA_TRANSFORM = Gf.Matrix4d(
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, -0.23, 1.0, 0.0,
+    0.0, 0.06, 0.65, 1.0,
+)
+
+
+def _relative_pose(
+    parent_position: Gf.Vec3d,
+    parent_orient: Gf.Quatd,
+    child_position: Gf.Vec3d,
+    child_orient: Gf.Quatd,
+) -> tuple[Gf.Vec3d, Gf.Quatd]:
+    """Express a link6-relative pose in its parent's frame."""
+    inverse = parent_orient.GetInverse()
+    return inverse.Transform(child_position - parent_position), inverse * child_orient
 
 # Seeed reBot-Isaacsim PR #21 establishes explicit drives for both fingers.
 # The imported asset is far too soft (~0.259 N/m), while the raw hardware
@@ -106,10 +223,13 @@ GRIPPER_STATIC_FRICTION = 2.4
 GRIPPER_DYNAMIC_FRICTION = 2.0
 STATIONERY_STATIC_FRICTION = 1.8
 STATIONERY_DYNAMIC_FRICTION = 1.5
-# Thin pen shafts need a small, explicit contact envelope.  The default is
-# chosen from shape extent and was inconsistent between the imported pen hull
-# and the gripper CAD, occasionally allowing a one-frame missed contact.
-STATIONERY_CONTACT_OFFSET = 0.002
+# Small objects need a small, explicit contact envelope.  The default is
+# chosen from shape extent and occasionally allowed a one-frame missed
+# contact against the gripper CAD.  It must also stay well under the vial
+# rack's ~1 mm slot clearance: anything larger (the importer default is
+# 20 mm) makes the rack-vial pair contact at the slot mouth and the vial is
+# held above the slot instead of entering it.
+STATIONERY_CONTACT_OFFSET = 0.0005
 STATIONERY_REST_OFFSET = 0.0
 STATIONERY_TORSIONAL_PATCH_RADIUS = 0.002
 
@@ -164,10 +284,11 @@ ROBOT_VISUAL_MATERIALS = {
 # The flat PhysX asset has no separate gripper_end rigid body. In link6
 # coordinates the grasp centre is 0.09121 m along +Z. The frame
 # orientation is the original URDF's fixed link6 -> gripper_end rotation.
-GRASP_OFFSET = Gf.Vec3f(0.0, 0.0, 0.09121)
-GRASP_LOCAL_ROT = Gf.Quatf(
-    0.0, Gf.Vec3f(-0.7071068, 0.0, -0.7071068)
-)
+# Where the assist joint parks the active vial: its origin 118 mm out along
+# the tool axis puts the vial's upper half between the fingers and keeps its
+# base clear of the wrist, with the vial upright on the tool axis.
+GRASP_OFFSET = Gf.Vec3f(0.0, 0.0, 0.118)
+GRASP_LOCAL_ROT = Gf.Quatf(1.0, Gf.Vec3f(0.0, 0.0, 0.0))
 
 
 def _set_transform(
@@ -204,67 +325,19 @@ def _preview_material(
     return material
 
 
-def _stationery_material(stage: Usd.Stage) -> UsdShade.Material:
-    """Create the Poly Haven stationery PBR material in scene scope."""
-    path = "/World/Looks/StationeryPBR"
-    material = UsdShade.Material.Define(stage, path)
-    shader = UsdShade.Shader.Define(stage, f"{path}/PreviewSurface")
-    shader.CreateIdAttr("UsdPreviewSurface")
+def _enable_patch_friction(physx_api) -> None:
+    """Enable patch friction on a PhysX material where the schema allows it.
 
-    reader = UsdShade.Shader.Define(stage, f"{path}/PrimvarReader")
-    reader.CreateIdAttr("UsdPrimvarReader_float2")
-    reader.CreateInput("varname", Sdf.ValueTypeNames.Token).Set("st")
+    Patch friction is what keeps thin shafts from slipping out of the
+    fingers, but not every PhysX schema build exposes the option.
+    """
+    improve_patch = getattr(
+        physx_api, "CreateImprovePatchFrictionAttr", None
+    )
+    if improve_patch is not None:
+        improve_patch(True)
 
-    def texture(name: str, asset: str, color_space: str) -> UsdShade.Shader:
-        node = UsdShade.Shader.Define(stage, f"{path}/{name}")
-        node.CreateIdAttr("UsdUVTexture")
-        node.CreateInput("file", Sdf.ValueTypeNames.Asset).Set(asset)
-        node.CreateInput("sourceColorSpace", Sdf.ValueTypeNames.Token).Set(
-            color_space
-        )
-        node.CreateInput("st", Sdf.ValueTypeNames.Float2).ConnectToSource(
-            reader.ConnectableAPI(), "result"
-        )
-        return node
 
-    diffuse = texture(
-        "DiffuseTexture",
-        "../assets/stationery/textures/stationery_supplies_diff_4k.jpg",
-        "sRGB",
-    )
-    arm = texture(
-        "ArmTexture",
-        "../assets/stationery/textures/stationery_supplies_arm_4k.jpg",
-        "raw",
-    )
-    normal = texture(
-        "NormalTexture",
-        "../assets/stationery/textures/stationery_supplies_nor_gl_4k.exr",
-        "raw",
-    )
-    normal.CreateInput("scale", Sdf.ValueTypeNames.Float4).Set(
-        Gf.Vec4f(2.0, 2.0, 2.0, 1.0)
-    )
-    normal.CreateInput("bias", Sdf.ValueTypeNames.Float4).Set(
-        Gf.Vec4f(-1.0, -1.0, -1.0, 0.0)
-    )
-    shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).ConnectToSource(
-        diffuse.ConnectableAPI(), "rgb"
-    )
-    # Poly Haven's ARM map stores AO, roughness and metalness in RGB.
-    shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).ConnectToSource(
-        arm.ConnectableAPI(), "g"
-    )
-    shader.CreateInput("metallic", Sdf.ValueTypeNames.Float).ConnectToSource(
-        arm.ConnectableAPI(), "b"
-    )
-    shader.CreateInput("normal", Sdf.ValueTypeNames.Normal3f).ConnectToSource(
-        normal.ConnectableAPI(), "rgb"
-    )
-    material.CreateSurfaceOutput().ConnectToSource(
-        shader.ConnectableAPI(), "surface"
-    )
-    return material
 
 
 def _cube(
@@ -293,23 +366,34 @@ def _cube(
     return cube
 
 
-def _add_pencil_cup(
-    stage: Usd.Stage, visual_material: UsdShade.Material
-) -> None:
-    """Add the source pencil cup as a fixed concave collision receptacle."""
-    cup = UsdGeom.Xform.Define(stage, PENCIL_CUP_PATH)
-    cup.GetPrim().GetReferences().AddReference(
-        STATIONERY_ASSET, "/Stationery/Pencilcup"
-    )
-    _set_transform(cup.GetPrim(), translate=PENCIL_CUP_CENTER)
-    cup_mesh = stage.OverridePrim(f"{PENCIL_CUP_PATH}/Mesh")
-    UsdShade.MaterialBindingAPI.Apply(cup_mesh).Bind(
-        visual_material, UsdShade.Tokens.strongerThanDescendants
-    )
-    UsdPhysics.CollisionAPI.Apply(cup_mesh)
-    UsdPhysics.MeshCollisionAPI.Apply(cup_mesh).CreateApproximationAttr(
-        "none"
-    )
+def _add_vial_rack(stage: Usd.Stage) -> None:
+    """Add the vial rack as a fixed receptacle, using its own collision."""
+    rack = UsdGeom.Xform.Define(stage, VIAL_RACK_PATH)
+    rack.GetPrim().GetReferences().AddReference(VIAL_RACK_ASSET)
+    _set_transform(rack.GetPrim(), translate=VIAL_RACK_POSITION)
+    # The asset ships a rigid body; pin it so the rack cannot be pushed.
+    body = stage.GetPrimAtPath(f"{VIAL_RACK_PATH}/Body1")
+    if not body.IsValid() or not body.HasAPI(UsdPhysics.RigidBodyAPI):
+        raise RuntimeError(f"Vial rack body is missing: {VIAL_RACK_PATH}/Body1")
+    UsdPhysics.RigidBodyAPI(body).CreateKinematicEnabledAttr(True)
+
+    # Recolour the asset's own material: same OmniPBR shader, orange input.
+    colour = stage.GetPrimAtPath(f"{VIAL_RACK_PATH}/Looks/OmniPBR/Shader")
+    if not colour.IsValid():
+        raise RuntimeError(f"Vial rack material is missing: {colour}")
+    colour.GetAttribute("inputs:diffuse_color_constant").Set(VIAL_RACK_COLOR)
+
+    # Tighten the collider envelope so the vials can enter the slots; see the
+    # VIAL_RACK_CONTACT_OFFSET comment for why the shipped defaults fail.
+    collider = stage.GetPrimAtPath(VIAL_RACK_COLLIDER_PATH)
+    if not collider.IsValid():
+        raise RuntimeError(f"Vial rack collider is missing: {VIAL_RACK_COLLIDER_PATH}")
+    collision = PhysxSchema.PhysxCollisionAPI.Apply(collider)
+    collision.CreateContactOffsetAttr(VIAL_RACK_CONTACT_OFFSET)
+    collision.CreateRestOffsetAttr(0.0)
+    sdf = PhysxSchema.PhysxSDFMeshCollisionAPI.Apply(collider)
+    sdf.CreateSdfMarginAttr(VIAL_RACK_SDF_MARGIN)
+    sdf.CreateSdfNarrowBandThicknessAttr(VIAL_RACK_SDF_NARROW_BAND)
 
 
 def _look_at_camera(
@@ -354,38 +438,36 @@ def _add_uvc32_camera_model(stage: Usd.Stage) -> None:
 
     mount = UsdGeom.Xform.Define(stage, WRIST_CAMERA_MOUNT_PATH)
     mount.GetPrim().GetReferences().AddReference(CAMERA_MOUNT_ASSET)
-    mount_yaw = math.radians(WRIST_CAMERA_MOUNT_YAW_DEG)
-    mount_orientation = Gf.Quatd(
-        math.cos(mount_yaw / 2.0),
-        Gf.Vec3d(0.0, 0.0, math.sin(mount_yaw / 2.0)),
-    )
     _set_transform(
         mount.GetPrim(),
-        translate=Gf.Vec3d(0.0, 0.0, WRIST_CAMERA_MOUNT_Z),
-        orient=mount_orientation,
+        translate=WRIST_CAMERA_MOUNT_POSITION,
+        orient=WRIST_CAMERA_MOUNT_ORIENT,
     )
     UsdShade.MaterialBindingAPI.Apply(mount.GetPrim()).Bind(
         mount_material, UsdShade.Tokens.strongerThanDescendants
     )
 
-    pitch = math.radians(WRIST_CAMERA_PITCH_DEG)
-    board_pitch_orientation = Gf.Quatd(
-        math.cos(pitch / 2.0),
-        Gf.Vec3d(math.sin(pitch / 2.0), 0.0, 0.0),
+    # The rig nests the way the official assembly does:
+    #   link6 -> bracket -> board -> lens barrel, lens glass, camera
+    # so each child's transform is expressed in its parent's frame.  The
+    # board frame's +Z is the plate normal, which is also the optical axis.
+    board_local = _relative_pose(
+        WRIST_CAMERA_MOUNT_POSITION,
+        WRIST_CAMERA_MOUNT_ORIENT,
+        WRIST_CAMERA_BOARD_POSITION,
+        WRIST_CAMERA_BOARD_ORIENT,
     )
-    board_orientation = mount_orientation * board_pitch_orientation
+    board_orientation = board_local[1]
     board = UsdGeom.Cube.Define(stage, WRIST_CAMERA_BOARD_PATH)
     board.CreateSizeAttr(1.0)
     _set_transform(
         board.GetPrim(),
-        translate=WRIST_CAMERA_BOARD_CENTER,
+        translate=board_local[0] + Gf.Vec3d(0.0, 0.0, 0.0008),
         orient=board_orientation,
-        scale=Gf.Vec3d(0.032, 0.032, 0.003),
+        scale=Gf.Vec3d(0.032, 0.032, 0.0016),
     )
     UsdShade.MaterialBindingAPI(board.GetPrim()).Bind(pcb_material)
 
-    normal = Gf.Vec3d(-math.sin(pitch), 0.0, math.cos(pitch))
-    housing_center = WRIST_CAMERA_BOARD_CENTER + normal * 0.0045
     housing = UsdGeom.Cylinder.Define(
         stage, f"{WRIST_CAMERA_BOARD_PATH}/LensHousing"
     )
@@ -394,12 +476,10 @@ def _add_uvc32_camera_model(stage: Usd.Stage) -> None:
     housing.CreateHeightAttr(0.006)
     _set_transform(
         housing.GetPrim(),
-        translate=housing_center,
-        orient=board_orientation,
+        translate=Gf.Vec3d(0.0, 0.0, 0.0069),
     )
     UsdShade.MaterialBindingAPI(housing.GetPrim()).Bind(housing_material)
 
-    lens_center = WRIST_CAMERA_BOARD_CENTER + normal * 0.0080
     lens = UsdGeom.Cylinder.Define(
         stage, f"{WRIST_CAMERA_BOARD_PATH}/LensGlass"
     )
@@ -408,10 +488,73 @@ def _add_uvc32_camera_model(stage: Usd.Stage) -> None:
     lens.CreateHeightAttr(0.001)
     _set_transform(
         lens.GetPrim(),
-        translate=lens_center,
-        orient=board_orientation,
+        translate=Gf.Vec3d(0.0, 0.0, 0.0094),
     )
     UsdShade.MaterialBindingAPI(lens.GetPrim()).Bind(lens_material)
+
+
+def _add_external_camera(stage: Usd.Stage) -> None:
+    """Attach the hand-placed overhead camera and its stand."""
+    mount_material = _preview_material(
+        stage, "/World/Looks/ExternalCameraMount", (0.42, 0.44, 0.47), 0.55, 0.55
+    )
+
+    mount = UsdGeom.Xform.Define(stage, EXTERNAL_CAMERA_MOUNT_PATH)
+    mount.GetPrim().GetReferences().AddReference(EXTERNAL_CAMERA_MOUNT_ASSET)
+    _set_transform(
+        mount.GetPrim(),
+        translate=EXTERNAL_CAMERA_MOUNT_POSITION,
+        orient=EXTERNAL_CAMERA_MOUNT_ORIENT,
+        scale=Gf.Vec3d(1.0, 1.0, 1.0),
+    )
+    UsdShade.MaterialBindingAPI.Apply(mount.GetPrim()).Bind(
+        mount_material, UsdShade.Tokens.strongerThanDescendants
+    )
+
+    # The top arm piece is relocated to hold the camera; the two middle
+    # sections are removed.  These are over-rides on the referenced prims.
+    arm_mesh = stage.OverridePrim(
+        f"{EXTERNAL_CAMERA_MOUNT_PATH}/{EXTERNAL_CAMERA_ARM_PIECE}"
+    )
+    arm_mesh.CreateAttribute(
+        "xformOp:translate", Sdf.ValueTypeNames.Double3
+    ).Set(EXTERNAL_CAMERA_ARM_PIECE_TRANSLATE)
+    arm_mesh.CreateAttribute(
+        "xformOp:orient", Sdf.ValueTypeNames.Quatf
+    ).Set(Gf.Quatf(1.0, Gf.Vec3f(0.0, 0.0, 0.0)))
+    arm_mesh.CreateAttribute(
+        "xformOp:scale", Sdf.ValueTypeNames.Float3
+    ).Set(Gf.Vec3f(1.0, 1.0, 1.0))
+    arm_mesh.CreateAttribute(
+        "xformOpOrder", Sdf.ValueTypeNames.TokenArray
+    ).Set(["xformOp:translate", "xformOp:orient", "xformOp:scale"])
+    # Deactivate the removed pieces; author any nested over before its
+    # parent goes inactive, because an inactive subtree is unreachable.
+    clamp_mesh = stage.OverridePrim(
+        f"{EXTERNAL_CAMERA_MOUNT_PATH}/tn__0001_ASM_/tn__taKka7/Mesh"
+    )
+    clamp_mesh.SetActive(False)
+    for piece in EXTERNAL_CAMERA_REMOVED_PIECES:
+        stage.OverridePrim(
+            f"{EXTERNAL_CAMERA_MOUNT_PATH}/{piece}"
+        ).SetActive(False)
+
+    # Attribute values first via look-at, then replace the transform with the
+    # exact hand-placed matrix (which is not orthonormal).
+    _look_at_camera(
+        stage,
+        EXTERNAL_CAMERA_PATH,
+        eye=Gf.Vec3d(0.0, 0.06, 0.65),
+        target=Gf.Vec3d(0.0, 0.1720724, 0.1627222),
+        up=Gf.Vec3d(0.0, 0.9745556, 0.2241449),
+        focal_length=EXTERNAL_CAMERA_FOCAL_MM,
+        clipping_range=Gf.Vec2f(0.01, 100.0),
+    )
+    xform = UsdGeom.Xformable(stage.GetPrimAtPath(EXTERNAL_CAMERA_PATH))
+    xform.ClearXformOpOrder()
+    xform.AddTransformOp(UsdGeom.XformOp.PrecisionDouble).Set(
+        EXTERNAL_CAMERA_TRANSFORM
+    )
 
 
 def _add_cameras(stage: Usd.Stage) -> None:
@@ -462,20 +605,26 @@ def _add_cameras(stage: Usd.Stage) -> None:
         clipping_range=Gf.Vec2f(0.01, 100.0),
     )
 
+    _add_external_camera(stage)
+
     _add_uvc32_camera_model(stage)
 
-    # This camera is authored below link6, so its pose follows the wrist. Its
-    # optical centre follows the real +X-above-gripper placement.
-    # USD cameras look down local -Z with +Y as image-up.
+    # This camera is authored below the board, so its pose follows the whole
+    # rig and can share the board's frame: the lens front is 9.9 mm out along
+    # the board normal, and the assembly's camera frame has +Y pointing down
+    # the image, as ROS optical frames do.  USD cameras look down local -Z
+    # with +Y as image-up, and the look-at below expresses both.
     _look_at_camera(
         stage,
         FRONT_CAMERA_PATH,
-        eye=WRIST_CAMERA_EYE,
-        target=WRIST_CAMERA_TARGET,
-        up=WRIST_CAMERA_UP,
+        eye=Gf.Vec3d(0.0, 0.0, WRIST_CAMERA_LENS_FRONT_M),
+        target=Gf.Vec3d(
+            0.0, 0.0, WRIST_CAMERA_LENS_FRONT_M + WRIST_CAMERA_FOCUS_M
+        ),
+        up=Gf.Vec3d(0.0, -1.0, 0.0),
         # The grab_tube_0 front stream uses a strong ultra-wide/fisheye view;
         # this rectilinear approximation matches its fingertip scale (~136°).
-        focal_length=4.2,
+        focal_length=WRIST_CAMERA_FOCAL_MM,
         # A physical lens now sits clear of link6, so a normal close near-plane
         # can replace the old 4 cm clipping workaround.
         clipping_range=Gf.Vec2f(0.01, 100.0),
@@ -496,6 +645,7 @@ def camera_rig_is_configured(stage: Usd.Stage) -> bool:
     for path in (
         SIDE_CAMERA_PATH,
         FRONT_CAMERA_PATH,
+        EXTERNAL_CAMERA_PATH,
     ):
         camera = UsdGeom.Camera(stage.GetPrimAtPath(path))
         if not camera:
@@ -558,14 +708,26 @@ def _add_lighting(stage: Usd.Stage) -> None:
         )
 
 
+def _workspace_placement() -> tuple[Gf.Vec3d, Gf.Vec3d]:
+    """Return the translate and scale that give the enclosure its interior."""
+    scale = Gf.Vec3d(
+        WORKSPACE_INTERIOR_TARGET_M[0] / WORKSPACE_INTERIOR_M[0],
+        WORKSPACE_INTERIOR_TARGET_M[1] / WORKSPACE_INTERIOR_M[1],
+        WORKSPACE_INTERIOR_TARGET_M[2] / WORKSPACE_INTERIOR_M[2],
+    )
+    pivot = Gf.Vec3d(0.0, WORKSPACE_Y_PIVOT, WORKSPACE_FLOOR_TOP_Z)
+    offset = Gf.Vec3d(0.0, 0.0, WORKSPACE_MODEL_OFFSET_Z)
+    # world = scale * local + translate, arranged so the pivot stays put.
+    translate = pivot + Gf.CompMult(offset - pivot, scale)
+    return translate, scale
+
+
 def _add_workspace_box(stage: Usd.Stage) -> None:
     """Reference the complete USDZ enclosure and add static collision."""
     workspace = UsdGeom.Xform.Define(stage, WORKSPACE_PATH)
     workspace.GetPrim().GetReferences().AddReference(WORKSPACE_ASSET)
-    # CAD work-surface top is z=0.49846 m; align it with the robot base.
-    _set_transform(
-        workspace.GetPrim(), translate=Gf.Vec3d(0.0, 0.0, -0.49846)
-    )
+    translate, scale = _workspace_placement()
+    _set_transform(workspace.GetPrim(), translate=translate, scale=scale)
     collider = stage.GetPrimAtPath(WORKSPACE_COLLIDER_PATH)
     if not collider.IsValid():
         raise RuntimeError(
@@ -587,9 +749,11 @@ def _add_table(
 ) -> None:
     """Add a static table whose top meets the enclosure's lower surface."""
     UsdGeom.Xform.Define(stage, "/World/Environment/Table")
-    # The transformed USDZ enclosure has a measured lower bound of
-    # z=-0.00300286 m.  Matching that value avoids a visible floating gap.
-    table_top_z = -0.00300286194
+    # The authored enclosure's lower bound sits at z=-0.00300286 m once the
+    # model offset is applied; carry it through the same Z scaling as the
+    # enclosure so the table cannot drift away and leave a visible gap.
+    _, scale = _workspace_placement()
+    table_top_z = -0.00300286194 * scale[2]
     top_thickness = 0.05
     _cube(
         stage,
@@ -722,7 +886,7 @@ def _configure_gripper_physics(stage: Usd.Stage) -> None:
 
 
 def _add_gripper_physics_material(stage: Usd.Stage) -> None:
-    """Give both finger colliders enough friction to hold thin stationery."""
+    """Give both finger colliders enough friction to hold the vials."""
     material = UsdShade.Material.Define(
         stage, GRIPPER_PHYSICS_MATERIAL_PATH
     )
@@ -733,7 +897,7 @@ def _add_gripper_physics_material(stage: Usd.Stage) -> None:
     physx_api = PhysxSchema.PhysxMaterialAPI.Apply(material.GetPrim())
     physx_api.CreateFrictionCombineModeAttr(PhysxSchema.Tokens.max)
     physx_api.CreateRestitutionCombineModeAttr(PhysxSchema.Tokens.min)
-    physx_api.CreateImprovePatchFrictionAttr(True)
+    _enable_patch_friction(physx_api)
 
     for path in GRIPPER_COLLIDER_PATHS:
         prim = stage.GetPrimAtPath(path)
@@ -805,8 +969,15 @@ def gripper_physics_is_fixed(stage: Usd.Stage) -> bool:
         != PhysxSchema.Tokens.max
     ):
         return False
-    if material.GetAttribute("physxMaterial:improvePatchFriction").Get() is not True:
-        return False
+    # Patch friction keeps thin shafts from slipping out of the fingers, but
+    # PhysX 110 (Isaac Sim 6.1) dropped the schema option entirely, so only
+    # require it on builds whose schema can author it at all.
+    if hasattr(PhysxSchema.PhysxMaterialAPI, "CreateImprovePatchFrictionAttr"):
+        if (
+            material.GetAttribute("physxMaterial:improvePatchFriction").Get()
+            is not True
+        ):
+            return False
     for path in GRIPPER_COLLIDER_PATHS:
         prim = stage.GetPrimAtPath(path)
         if not prim.IsValid():
@@ -828,10 +999,8 @@ def gripper_physics_is_fixed(stage: Usd.Stage) -> bool:
     )
 
 
-def _add_stationery_targets(
-    stage: Usd.Stage, visual_material: UsdShade.Material
-) -> None:
-    """Add two pens and one eraser as independent dynamic rigid bodies."""
+def _add_vial_targets(stage: Usd.Stage) -> None:
+    """Add three vials as independent dynamic rigid bodies."""
     UsdGeom.Scope.Define(stage, "/World/Objects")
     physics_material = UsdShade.Material.Define(
         stage, STATIONERY_PHYSICS_MATERIAL_PATH
@@ -848,17 +1017,19 @@ def _add_stationery_targets(
         PhysxSchema.Tokens.min
     )
     physx_material.CreateDampingCombineModeAttr(PhysxSchema.Tokens.max)
-    physx_material.CreateImprovePatchFrictionAttr(True)
+    _enable_patch_friction(physx_material)
 
+    # Spawned with their bases ~40 mm above the work surface; the origin of
+    # the vial asset sits 17 mm above its base.
     initial_poses = {
-        "pen_red": ((0.07, 0.02, 0.075), 18.0),
-        "pen_blue": ((0.15, 0.18, 0.095), -32.0),
-        "eraser": ((0.115, 0.095, 0.055), 28.0),
+        "vial_1": ((0.07, 0.02, 0.057), 18.0),
+        "vial_2": ((0.15, 0.18, 0.057), -32.0),
+        "vial_3": ((0.115, 0.095, 0.057), 28.0),
     }
     for name, (path, source_prim, mass_kg) in TARGET_SPECS.items():
         target = UsdGeom.Xform.Define(stage, path)
         target.GetPrim().GetReferences().AddReference(
-            STATIONERY_ASSET, source_prim
+            VIAL_ASSET, source_prim
         )
         position, yaw_deg = initial_poses[name]
         yaw = math.radians(yaw_deg)
@@ -871,7 +1042,10 @@ def _add_stationery_targets(
             ),
         )
         rigid = UsdPhysics.RigidBodyAPI.Apply(target.GetPrim())
-        rigid.CreateKinematicEnabledAttr(True)
+        # Dynamic from the start: the vials are pushed around and lifted,
+        # both in teleoperation and when the scene is opened on its own.
+        # Only the rack is meant to stay put.
+        rigid.CreateKinematicEnabledAttr(False)
         physx_rigid = PhysxSchema.PhysxRigidBodyAPI.Apply(target.GetPrim())
         physx_rigid.CreateMaxDepenetrationVelocityAttr(
             OBJECT_MAX_DEPENETRATION_VELOCITY
@@ -879,18 +1053,26 @@ def _add_stationery_targets(
         physx_rigid.CreateMaxContactImpulseAttr(OBJECT_MAX_CONTACT_IMPULSE)
         mass = UsdPhysics.MassAPI.Apply(target.GetPrim())
         mass.CreateMassAttr(mass_kg)
-        mass.CreateCenterOfMassAttr(Gf.Vec3f(0.0))
+        mass.CreateCenterOfMassAttr(Gf.Vec3f(0.0, 0.0, VIAL_CENTER_OF_MASS_Z))
 
-        mesh = stage.OverridePrim(f"{path}/Mesh")
-        UsdShade.MaterialBindingAPI.Apply(mesh).Bind(
-            visual_material, UsdShade.Tokens.strongerThanDescendants
+        # The vial asset ships its own collider mesh; the visual meshes stay
+        # collision-free and keep their own materials.
+        collider = stage.GetPrimAtPath(f"{path}/collider")
+        if not collider.IsValid():
+            raise RuntimeError(f"Vial collider is missing: {path}/collider")
+        # The vial asset declares a bare physics MassAPI on this collider with
+        # no values authored, so the schema fallbacks apply: mass 0 and an
+        # infinite centre of mass.  PhysX cannot build that body — the strict
+        # case crashes the simulator — so author finite shape values here.
+        collider_mass = UsdPhysics.MassAPI.Apply(collider)
+        collider_mass.CreateMassAttr(0.0)
+        collider_mass.CreateCenterOfMassAttr(
+            Gf.Vec3f(0.0, 0.0, VIAL_CENTER_OF_MASS_Z)
         )
-        UsdPhysics.CollisionAPI.Apply(mesh)
-        UsdPhysics.FilteredPairsAPI.Apply(mesh).CreateFilteredPairsRel()
-        UsdPhysics.MeshCollisionAPI.Apply(mesh).CreateApproximationAttr(
+        UsdPhysics.MeshCollisionAPI.Apply(collider).CreateApproximationAttr(
             "convexHull"
         )
-        physx_collision = PhysxSchema.PhysxCollisionAPI.Apply(mesh)
+        physx_collision = PhysxSchema.PhysxCollisionAPI.Apply(collider)
         physx_collision.CreateContactOffsetAttr(STATIONERY_CONTACT_OFFSET)
         physx_collision.CreateRestOffsetAttr(STATIONERY_REST_OFFSET)
         physx_collision.CreateTorsionalPatchRadiusAttr(
@@ -899,7 +1081,7 @@ def _add_stationery_targets(
         physx_collision.CreateMinTorsionalPatchRadiusAttr(
             STATIONERY_TORSIONAL_PATCH_RADIUS
         )
-        UsdShade.MaterialBindingAPI(mesh).Bind(
+        UsdShade.MaterialBindingAPI(collider).Bind(
             physics_material,
             UsdShade.Tokens.weakerThanDescendants,
             "physics",
@@ -910,7 +1092,7 @@ def _add_assist_joint(stage: Usd.Stage) -> None:
     joint = UsdPhysics.FixedJoint.Define(stage, ASSIST_JOINT_PATH)
     joint.CreateBody0Rel().SetTargets([Sdf.Path(GRIPPER_BODY_PATH)])
     joint.CreateBody1Rel().SetTargets(
-        [Sdf.Path(TARGET_SPECS["pen_red"][0])]
+        [Sdf.Path(TARGET_SPECS["vial_1"][0])]
     )
     joint.CreateLocalPos0Attr(GRASP_OFFSET)
     joint.CreateLocalPos1Attr(Gf.Vec3f(0.0))
@@ -938,10 +1120,19 @@ def _add_gripper_collision_filter(stage: Usd.Stage) -> None:
 def build_scene(output: Path = DEFAULT_OUTPUT) -> Path:
     output = output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
-    if output.exists():
-        output.unlink()
 
-    stage = Usd.Stage.CreateNew(str(output))
+    # Rebuilding from inside a running app (the teleop staleness path) has
+    # the scene already loaded as a layer, so CreateNew would fail with
+    # "A layer already exists with identifier".  Empty and reuse that layer,
+    # leaving the file on disk alone until the rebuild saves over it.
+    existing = Sdf.Layer.Find(str(output))
+    if existing is not None:
+        existing.Clear()
+        stage = Usd.Stage.Open(existing)
+    else:
+        if output.exists():
+            output.unlink()
+        stage = Usd.Stage.CreateNew(str(output))
     UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.z)
     UsdGeom.SetStageMetersPerUnit(stage, 1.0)
     stage.SetTimeCodesPerSecond(120.0)
@@ -962,10 +1153,9 @@ def build_scene(output: Path = DEFAULT_OUTPUT) -> Path:
     table_leg_material = _preview_material(
         stage, "/World/Looks/TableLegs", (0.055, 0.06, 0.07), 0.36, 0.65
     )
-    stationery_material = _stationery_material(stage)
     _add_workspace_box(stage)
     _add_table(stage, table_top_material, table_leg_material)
-    _add_pencil_cup(stage, stationery_material)
+    _add_vial_rack(stage)
     _cube(
         stage,
         "/World/Environment/Floor",
@@ -983,7 +1173,7 @@ def build_scene(output: Path = DEFAULT_OUTPUT) -> Path:
     _configure_arm_physics(stage)
     _configure_gripper_physics(stage)
     _add_gripper_physics_material(stage)
-    _add_stationery_targets(stage, stationery_material)
+    _add_vial_targets(stage)
     _add_assist_joint(stage)
     _add_gripper_collision_filter(stage)
     _add_lighting(stage)

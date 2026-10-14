@@ -1,5 +1,32 @@
 #usda 1.0
 (
+    customLayerData = {
+        dictionary cameraSettings = {
+            dictionary Front = {
+                double3 position = (5, 0, 0)
+                double radius = 5
+            }
+            dictionary Perspective = {
+                double3 position = (-0.02990473805129279, 0.4329311938411265, 0.5861817711622531)
+                double3 target = (0.027761493443966313, -0.004998099215415552, -0.09194757978862733)
+            }
+            dictionary Right = {
+                double3 position = (0, -5, 0)
+                double radius = 5
+            }
+            dictionary Top = {
+                double3 position = (0, 0, 5)
+                double radius = 5
+            }
+            string boundCamera = "/OmniverseKit_Persp"
+        }
+        dictionary omni_layer = {
+            string authoring_layer = "./rebot_stationery_sorting.usda"
+        }
+        dictionary renderSettings = {
+            token "rtx:rendermode" = "PathTracing"
+        }
+    }
     defaultPrim = "World"
     endTimeCode = 1200
     metersPerUnit = 1
@@ -52,58 +79,6 @@ def Xform "World"
                 float inputs:metallic = 0.65
                 float inputs:roughness = 0.36
                 token outputs:surface
-            }
-        }
-
-        def Material "StationeryPBR"
-        {
-            token outputs:surface.connect = </World/Looks/StationeryPBR/PreviewSurface.outputs:surface>
-
-            def Shader "PreviewSurface"
-            {
-                uniform token info:id = "UsdPreviewSurface"
-                color3f inputs:diffuseColor.connect = </World/Looks/StationeryPBR/DiffuseTexture.outputs:rgb>
-                float inputs:metallic.connect = </World/Looks/StationeryPBR/ArmTexture.outputs:b>
-                normal3f inputs:normal.connect = </World/Looks/StationeryPBR/NormalTexture.outputs:rgb>
-                float inputs:roughness.connect = </World/Looks/StationeryPBR/ArmTexture.outputs:g>
-                token outputs:surface
-            }
-
-            def Shader "PrimvarReader"
-            {
-                uniform token info:id = "UsdPrimvarReader_float2"
-                token inputs:varname = "st"
-                float2 outputs:result
-            }
-
-            def Shader "DiffuseTexture"
-            {
-                uniform token info:id = "UsdUVTexture"
-                asset inputs:file = @../assets/stationery/textures/stationery_supplies_diff_4k.jpg@
-                token inputs:sourceColorSpace = "sRGB"
-                float2 inputs:st.connect = </World/Looks/StationeryPBR/PrimvarReader.outputs:result>
-                color3f outputs:rgb
-            }
-
-            def Shader "ArmTexture"
-            {
-                uniform token info:id = "UsdUVTexture"
-                asset inputs:file = @../assets/stationery/textures/stationery_supplies_arm_4k.jpg@
-                token inputs:sourceColorSpace = "raw"
-                float2 inputs:st.connect = </World/Looks/StationeryPBR/PrimvarReader.outputs:result>
-                float outputs:b
-                float outputs:g
-            }
-
-            def Shader "NormalTexture"
-            {
-                uniform token info:id = "UsdUVTexture"
-                float4 inputs:bias = (-1, -1, -1, 0)
-                asset inputs:file = @../assets/stationery/textures/stationery_supplies_nor_gl_4k.exr@
-                float4 inputs:scale = (2, 2, 2, 1)
-                token inputs:sourceColorSpace = "raw"
-                float2 inputs:st.connect = </World/Looks/StationeryPBR/PrimvarReader.outputs:result>
-                normal3f outputs:rgb
             }
         }
 
@@ -171,7 +146,6 @@ def Xform "World"
             float physics:restitution = 0
             float physics:staticFriction = 2.4
             uniform token physxMaterial:frictionCombineMode = "max"
-            bool physxMaterial:improvePatchFriction = 1
             uniform token physxMaterial:restitutionCombineMode = "min"
         }
 
@@ -184,7 +158,6 @@ def Xform "World"
             float physics:staticFriction = 1.8
             uniform token physxMaterial:dampingCombineMode = "max"
             uniform token physxMaterial:frictionCombineMode = "max"
-            bool physxMaterial:improvePatchFriction = 1
             uniform token physxMaterial:restitutionCombineMode = "min"
         }
 
@@ -226,6 +199,20 @@ def Xform "World"
                 color3f inputs:diffuseColor = (0.015, 0.025, 0.05)
                 float inputs:metallic = 0.25
                 float inputs:roughness = 0.12
+                token outputs:surface
+            }
+        }
+
+        def Material "ExternalCameraMount"
+        {
+            token outputs:surface.connect = </World/Looks/ExternalCameraMount/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.42, 0.44, 0.47)
+                float inputs:metallic = 0.55
+                float inputs:roughness = 0.55
                 token outputs:surface
             }
         }
@@ -353,8 +340,9 @@ def Xform "World"
         prepend references = @../assets/workspace/box.usdz@
     )
     {
-        double3 xformOp:translate = (0, 0, -0.49846)
-        uniform token[] xformOpOrder = ["xformOp:translate"]
+        double3 xformOp:scale = (0.9571788413098237, 0.8581358429039316, 1.0769230769230769)
+        double3 xformOp:translate = (0, 0.044241756031979884, -0.5368030769230769)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
 
         over "box"
         {
@@ -393,7 +381,7 @@ def Xform "World"
                 rel material:binding = </World/Looks/TableTop>
                 double size = 1
                 double3 xformOp:scale = (1.15, 0.95, 0.05)
-                double3 xformOp:translate = (0, 0.22, -0.028002861940000002)
+                double3 xformOp:translate = (0, 0.22, -0.028233851320000003)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
             }
 
@@ -403,8 +391,8 @@ def Xform "World"
             {
                 rel material:binding = </World/Looks/TableLegs>
                 double size = 1
-                double3 xformOp:scale = (0.065, 0.065, 0.38699713806)
-                double3 xformOp:translate = (-0.49, -0.17, -0.24650143097)
+                double3 xformOp:scale = (0.065, 0.065, 0.38676614868)
+                double3 xformOp:translate = (-0.49, -0.17, -0.24661692566)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
             }
 
@@ -414,8 +402,8 @@ def Xform "World"
             {
                 rel material:binding = </World/Looks/TableLegs>
                 double size = 1
-                double3 xformOp:scale = (0.065, 0.065, 0.38699713806)
-                double3 xformOp:translate = (-0.49, 0.61, -0.24650143097)
+                double3 xformOp:scale = (0.065, 0.065, 0.38676614868)
+                double3 xformOp:translate = (-0.49, 0.61, -0.24661692566)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
             }
 
@@ -425,8 +413,8 @@ def Xform "World"
             {
                 rel material:binding = </World/Looks/TableLegs>
                 double size = 1
-                double3 xformOp:scale = (0.065, 0.065, 0.38699713806)
-                double3 xformOp:translate = (0.49, -0.17, -0.24650143097)
+                double3 xformOp:scale = (0.065, 0.065, 0.38676614868)
+                double3 xformOp:translate = (0.49, -0.17, -0.24661692566)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
             }
 
@@ -436,27 +424,63 @@ def Xform "World"
             {
                 rel material:binding = </World/Looks/TableLegs>
                 double size = 1
-                double3 xformOp:scale = (0.065, 0.065, 0.38699713806)
-                double3 xformOp:translate = (0.49, 0.61, -0.24650143097)
+                double3 xformOp:scale = (0.065, 0.065, 0.38676614868)
+                double3 xformOp:translate = (0.49, 0.61, -0.24661692566)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
             }
         }
 
-        def Xform "PencilCup" (
-            prepend references = @../assets/stationery/stationery_models.usd@</Stationery/Pencilcup>
+        def Xform "VialRack" (
+            prepend references = @../assets/stationery/Vial_rack_simple.usda@
         )
         {
-            double3 xformOp:translate = (-0.16, 0.12, 0.0365904756)
+            double3 xformOp:translate = (-0.22, 0.06, 0.006)
             uniform token[] xformOpOrder = ["xformOp:translate"]
 
-            over "Mesh" (
-                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
-            )
+            over "Body1"
             {
-                rel material:binding = </World/Looks/StationeryPBR> (
-                    bindMaterialAs = "strongerThanDescendants"
-                )
-                uniform token physics:approximation = "none"
+                bool physics:kinematicEnabled = 1
+
+                over "Mesh"
+                {
+                    over "Mesh" (
+                        prepend apiSchemas = ["PhysxCollisionAPI", "PhysxSDFMeshCollisionAPI", "NewtonCollisionAPI", "PhysxTriangleMeshCollisionAPI", "PhysxConvexDecompositionCollisionAPI", "PhysxConvexHullCollisionAPI", "PhysxTriangleMeshSimplificationCollisionAPI", "PhysxSphereFillCollisionAPI"]
+                    )
+                    {
+                        uniform bool doubleSided = 0
+                        uniform token physics:approximation = "sdf"
+                        bool physics:collisionEnabled = 1
+                        float physxCollision:contactOffset = -inf
+                        float physxCollision:minTorsionalPatchRadius = 0
+                        float physxCollision:restOffset = -inf
+                        float physxCollision:torsionalPatchRadius = 0
+                        float physxConvexDecompositionCollision:errorPercentage = 10
+                        int physxConvexDecompositionCollision:hullVertexLimit = 48
+                        int physxConvexDecompositionCollision:maxConvexHulls = 32
+                        float physxConvexDecompositionCollision:minThickness = 0.001
+                        int physxConvexDecompositionCollision:voxelResolution = 500000
+                        int physxConvexHullCollision:hullVertexLimit = 64
+                        float physxConvexHullCollision:minThickness = 0.001
+                        uniform float physxSDFMeshCollision:sdfMargin = 0.001
+                        uniform float physxSDFMeshCollision:sdfNarrowBandThickness = 0.002
+                        uniform int physxSDFMeshCollision:sdfResolution = 256
+                        uniform float physxSDFMeshCollision:sdfTriangleCountReductionFactor = 1
+                        float physxTriangleMeshSimplificationCollision:metric = 0.55
+                        bool singleSided = 0
+                        float3 xformOp:scale = (1, 1, 1)
+                    }
+                }
+            }
+
+            over "Looks"
+            {
+                over "OmniPBR"
+                {
+                    over "Shader"
+                    {
+                        color3f inputs:diffuse_color_constant = (0.943, 0.241, 0.13)
+                    }
+                }
             }
         }
 
@@ -472,7 +496,9 @@ def Xform "World"
         }
     }
 
-    def PhysicsScene "PhysicsScene"
+    def PhysicsScene "PhysicsScene" (
+        prepend apiSchemas = ["NewtonSceneAPI", "PhysxSceneAPI"]
+    )
     {
         vector3f physics:gravityDirection = (0, 0, -1)
         float physics:gravityMagnitude = 9.81
@@ -790,52 +816,50 @@ def Xform "World"
                 rel material:binding = </World/Looks/UVC32Mount> (
                     bindMaterialAs = "strongerThanDescendants"
                 )
-                quatd xformOp:orient = (0.7071067811865476, 0, 0, -0.7071067811865475)
-                double3 xformOp:translate = (0, 0, 0.09)
+                quatd xformOp:orient = (0.7062529194, -0.0026105535, -0.0110436469, -0.7078686578)
+                double3 xformOp:translate = (0.023151717, -0.0002007298, 0.0477621244)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
-            }
 
-            def Cube "UVC32Camera"
-            {
-                rel material:binding = </World/Looks/UVC32PCB>
-                double size = 1
-                quatd xformOp:orient = (0.7010573846499779, 0.09229595564125725, -0.09229595564125724, -0.7010573846499778)
-                double3 xformOp:scale = (0.032, 0.032, 0.003)
-                double3 xformOp:translate = (0.0685, 0, 0.08444)
-                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
-
-                def Cylinder "LensHousing"
+                def Cube "UVC32Camera"
                 {
-                    uniform token axis = "Z"
-                    double height = 0.006
-                    rel material:binding = </World/Looks/UVC32Housing>
-                    double radius = 0.0065
-                    quatd xformOp:orient = (0.7010573846499779, 0.09229595564125725, -0.09229595564125724, -0.7010573846499778)
-                    double3 xformOp:translate = (0.06733531429703866, 0, 0.08878666621830081)
-                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
-                }
+                    rel material:binding = </World/Looks/UVC32PCB>
+                    double size = 1
+                    quatd xformOp:orient = (2.5746849097174618e-11, -7.67641505916572e-12, -0.29621554437178865, 0.9551211186004986)
+                    double3 xformOp:scale = (0.032, 0.032, 0.0016)
+                    double3 xformOp:translate = (0.0000014555909873983853, 0.08218025728194717, -0.0022930491725059363)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
-                def Cylinder "LensGlass"
-                {
-                    uniform token axis = "Z"
-                    double height = 0.001
-                    rel material:binding = </World/Looks/UVC32Lens>
-                    double radius = 0.0047
-                    quatd xformOp:orient = (0.7010573846499779, 0.09229595564125725, -0.09229595564125724, -0.7010573846499778)
-                    double3 xformOp:translate = (0.06642944763917984, 0, 0.09216740661031254)
-                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
-                }
-            }
+                    def Cylinder "LensHousing"
+                    {
+                        uniform token axis = "Z"
+                        double height = 0.006
+                        rel material:binding = </World/Looks/UVC32Housing>
+                        double radius = 0.0065
+                        double3 xformOp:translate = (0, 0, 0.0069)
+                        uniform token[] xformOpOrder = ["xformOp:translate"]
+                    }
 
-            def Camera "FrontCamera"
-            {
-                float2 clippingRange = (0.01, 100)
-                float focalLength = 4.2
-                float focusDistance = 0.15358633
-                float horizontalAperture = 20.955
-                float verticalAperture = 15.71625
-                matrix4d xformOp:transform = ( (0, 1, -0, 0), (0.904826670174236, 0, 0.4257801039755197, 0), (0.4257801039755197, 0, -0.904826670174236, 0), (0.065394, 0, 0.096031, 1) )
-                uniform token[] xformOpOrder = ["xformOp:transform"]
+                    def Cylinder "LensGlass"
+                    {
+                        uniform token axis = "Z"
+                        double height = 0.001
+                        rel material:binding = </World/Looks/UVC32Lens>
+                        double radius = 0.0047
+                        double3 xformOp:translate = (0, 0, 0.0094)
+                        uniform token[] xformOpOrder = ["xformOp:translate"]
+                    }
+
+                    def Camera "FrontCamera"
+                    {
+                        float2 clippingRange = (0.01, 100)
+                        float focalLength = 11.04
+                        float focusDistance = 0.15358633
+                        float horizontalAperture = 20.955
+                        float verticalAperture = 15.71625
+                        matrix4d xformOp:transform = ( (1, 0, -0, -0), (0, -1, 0, 0), (0, 0, -1, 0), (0, 0, 0.0099, 1) )
+                        uniform token[] xformOpOrder = ["xformOp:transform"]
+                    }
+                }
             }
         }
 
@@ -847,6 +871,8 @@ def Xform "World"
             {
                 float drive:angular:physics:damping = 85
                 float physxJoint:maxJointVelocity = 687.5494
+                float state:angular:physics:position = 0
+                float state:angular:physics:velocity = 0
             }
 
             over "joint2" (
@@ -855,6 +881,8 @@ def Xform "World"
             {
                 float drive:angular:physics:damping = 105
                 float physxJoint:maxJointVelocity = 687.5494
+                float state:angular:physics:position = 0
+                float state:angular:physics:velocity = 0
             }
 
             over "joint3" (
@@ -863,6 +891,8 @@ def Xform "World"
             {
                 float drive:angular:physics:damping = 85
                 float physxJoint:maxJointVelocity = 687.5494
+                float state:angular:physics:position = 0
+                float state:angular:physics:velocity = 0
             }
 
             over "joint4" (
@@ -871,6 +901,8 @@ def Xform "World"
             {
                 float drive:angular:physics:damping = 30
                 float physxJoint:maxJointVelocity = 572.9578
+                float state:angular:physics:position = 0
+                float state:angular:physics:velocity = 0
             }
 
             over "joint5" (
@@ -879,6 +911,8 @@ def Xform "World"
             {
                 float drive:angular:physics:damping = 23
                 float physxJoint:maxJointVelocity = 572.9578
+                float state:angular:physics:position = 0
+                float state:angular:physics:velocity = 0
             }
 
             over "joint6" (
@@ -887,6 +921,8 @@ def Xform "World"
             {
                 float drive:angular:physics:damping = 18
                 float physxJoint:maxJointVelocity = 572.9578
+                float state:angular:physics:position = 0
+                float state:angular:physics:velocity = 0
             }
 
             over "joint_left" (
@@ -899,6 +935,8 @@ def Xform "World"
                 uniform token drive:linear:physics:type = "force"
                 float physics:upperLimit = 0.05
                 float physxJoint:maxJointVelocity = 0.08
+                float state:linear:physics:position = 0
+                float state:linear:physics:velocity = 0
                 custom float urdf:limit:effort = 12
             }
 
@@ -912,6 +950,8 @@ def Xform "World"
                 uniform token drive:linear:physics:type = "force"
                 float physics:upperLimit = 0.05
                 float physxJoint:maxJointVelocity = 0.08
+                float state:linear:physics:position = 0
+                float state:linear:physics:velocity = 0
                 custom float urdf:limit:effort = 12
             }
         }
@@ -919,102 +959,116 @@ def Xform "World"
 
     def Scope "Objects"
     {
-        def Xform "PenRed" (
+        def Xform "Vial1" (
             prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
-            prepend references = @../assets/stationery/stationery_models.usd@</Stationery/PenRed>
+            prepend references = @../assets/stationery/Vial_opaque.usda@</Vial>
         )
         {
-            point3f physics:centerOfMass = (0, 0, 0)
-            bool physics:kinematicEnabled = 1
-            float physics:mass = 0.012
+            point3f physics:centerOfMass = (0, 0, 0.0413)
+            bool physics:kinematicEnabled = 0
+            float physics:mass = 0.018
             float physxRigidBody:maxContactImpulse = 0.05
             float physxRigidBody:maxDepenetrationVelocity = 0.25
             quatd xformOp:orient = (0.9876883405951378, 0, 0, 0.15643446504023087)
-            double3 xformOp:translate = (0.07, 0.02, 0.075)
+            double3 xformOp:translate = (0.07, 0.02, 0.057)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
 
-            over "Mesh" (
-                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI", "PhysicsFilteredPairsAPI", "PhysicsMeshCollisionAPI", "PhysxCollisionAPI"]
+            over "collider" (
+                prepend apiSchemas = ["PhysicsMassAPI", "PhysicsMeshCollisionAPI", "PhysxCollisionAPI"]
             )
             {
-                rel material:binding = </World/Looks/StationeryPBR> (
-                    bindMaterialAs = "strongerThanDescendants"
-                )
                 rel material:binding:physics = </World/Looks/StationeryPhysics> (
                     bindMaterialAs = "weakerThanDescendants"
                 )
                 uniform token physics:approximation = "convexHull"
-                rel physics:filteredPairs
-                float physxCollision:contactOffset = 0.002
+                point3f physics:centerOfMass = (0, 0, 0.0413)
+                float physics:mass = 0
+                float physxCollision:contactOffset = 0.0005
                 float physxCollision:minTorsionalPatchRadius = 0.002
                 float physxCollision:restOffset = 0
                 float physxCollision:torsionalPatchRadius = 0.002
+                float3 xformOp:scale = (0.95, 0.95, 1)
+            }
+
+            over "Mesh_002"
+            {
+                quatf xformOp:orient = (1, 0, 0, 0)
+                float3 xformOp:scale = (1, 1, 1)
+                double3 xformOp:translate = (0, 0, 2.7755575615628914e-17)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
             }
         }
 
-        def Xform "PenBlue" (
+        def Xform "Vial2" (
             prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
-            prepend references = @../assets/stationery/stationery_models.usd@</Stationery/PenBlue>
+            prepend references = @../assets/stationery/Vial_opaque.usda@</Vial>
         )
         {
-            point3f physics:centerOfMass = (0, 0, 0)
-            bool physics:kinematicEnabled = 1
-            float physics:mass = 0.012
+            point3f physics:centerOfMass = (0, 0, 0.0413)
+            bool physics:kinematicEnabled = 0
+            float physics:mass = 0.018
             float physxRigidBody:maxContactImpulse = 0.05
             float physxRigidBody:maxDepenetrationVelocity = 0.25
             quatd xformOp:orient = (0.9612616959383189, 0, 0, -0.27563735581699916)
-            double3 xformOp:translate = (0.15, 0.18, 0.095)
+            double3 xformOp:translate = (0.15, 0.18, 0.057)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
 
-            over "Mesh" (
-                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI", "PhysicsFilteredPairsAPI", "PhysicsMeshCollisionAPI", "PhysxCollisionAPI"]
+            over "collider" (
+                prepend apiSchemas = ["PhysicsMassAPI", "PhysicsMeshCollisionAPI", "PhysxCollisionAPI"]
             )
             {
-                rel material:binding = </World/Looks/StationeryPBR> (
-                    bindMaterialAs = "strongerThanDescendants"
-                )
                 rel material:binding:physics = </World/Looks/StationeryPhysics> (
                     bindMaterialAs = "weakerThanDescendants"
                 )
                 uniform token physics:approximation = "convexHull"
-                rel physics:filteredPairs
-                float physxCollision:contactOffset = 0.002
+                point3f physics:centerOfMass = (0, 0, 0.0413)
+                float physics:mass = 0
+                float physxCollision:contactOffset = 0.0005
                 float physxCollision:minTorsionalPatchRadius = 0.002
                 float physxCollision:restOffset = 0
                 float physxCollision:torsionalPatchRadius = 0.002
+                float3 xformOp:scale = (0.95, 0.95, 0.9)
             }
         }
 
-        def Xform "Eraser" (
+        def Xform "Vial3" (
             prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
-            prepend references = @../assets/stationery/stationery_models.usd@</Stationery/Eraser>
+            prepend references = @../assets/stationery/Vial_opaque.usda@</Vial>
         )
         {
-            point3f physics:centerOfMass = (0, 0, 0)
-            bool physics:kinematicEnabled = 1
-            float physics:mass = 0.025
+            point3f physics:centerOfMass = (0, 0, 0.0413)
+            bool physics:kinematicEnabled = 0
+            float physics:mass = 0.018
             float physxRigidBody:maxContactImpulse = 0.05
             float physxRigidBody:maxDepenetrationVelocity = 0.25
             quatd xformOp:orient = (0.9702957262759965, 0, 0, 0.24192189559966773)
-            double3 xformOp:translate = (0.115, 0.095, 0.055)
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            float3 xformOp:scale = (0.8, 0.8, 0.8)
+            double3 xformOp:translate = (-0.027313058787957534, 0.164489238231767, 0.10947959464327053)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
-            over "Mesh" (
-                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI", "PhysicsFilteredPairsAPI", "PhysicsMeshCollisionAPI", "PhysxCollisionAPI"]
+            over "collider" (
+                prepend apiSchemas = ["PhysicsMassAPI", "PhysicsMeshCollisionAPI", "PhysxCollisionAPI", "PhysxSDFMeshCollisionAPI", "PhysxTriangleMeshSimplificationCollisionAPI", "PhysxSphereFillCollisionAPI", "PhysxTriangleMeshCollisionAPI"]
             )
             {
-                rel material:binding = </World/Looks/StationeryPBR> (
-                    bindMaterialAs = "strongerThanDescendants"
-                )
                 rel material:binding:physics = </World/Looks/StationeryPhysics> (
                     bindMaterialAs = "weakerThanDescendants"
                 )
-                uniform token physics:approximation = "convexHull"
-                rel physics:filteredPairs
-                float physxCollision:contactOffset = 0.002
+                uniform token physics:approximation = "meshSimplification"
+                point3f physics:centerOfMass = (0, 0, 0.0413)
+                float physics:mass = 0
+                float physxCollision:contactOffset = 0.0005
                 float physxCollision:minTorsionalPatchRadius = 0.002
                 float physxCollision:restOffset = 0
                 float physxCollision:torsionalPatchRadius = 0.002
+                float3 xformOp:scale = (0.8, 0.8, 1)
+            }
+
+            over "Mesh_002"
+            {
+                quatf xformOp:orient = (1, 0, 0, 0)
+                float3 xformOp:scale = (1, 1, 1)
+                double3 xformOp:translate = (0, 0, 2.7755575615628914e-17)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
             }
         }
     }
@@ -1027,11 +1081,11 @@ def Xform "World"
     )
     {
         rel physics:body0 = </World/Robot/link6>
-        rel physics:body1 = </World/Objects/PenRed>
+        rel physics:body1 = </World/Objects/Vial1>
         bool physics:jointEnabled = 0
-        point3f physics:localPos0 = (0, 0, 0.09121)
+        point3f physics:localPos0 = (0, 0, 0.118)
         point3f physics:localPos1 = (0, 0, 0)
-        quatf physics:localRot0 = (0, -0.7071068, 0, -0.7071068)
+        quatf physics:localRot0 = (1, 0, 0, 0)
         quatf physics:localRot1 = (1, 0, 0, 0)
     }
 
@@ -1080,5 +1134,241 @@ def Xform "World"
             matrix4d xformOp:transform = ( (0.6298019584212192, 0.7767557487195038, 0, 0), (-0.5270528335601686, 0.4273401353190556, 0.7345717932113162, -0), (0.5705828632240845, -0.4626347539654738, 0.6785309724826948, 0), (0.37, -0.04999999999999995, 0.6, 1) )
             uniform token[] xformOpOrder = ["xformOp:transform"]
         }
+
+        def Xform "ExternalMount" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+            prepend references = @../assets/camera/data_collection_camera_mount.usd@
+        )
+        {
+            rel material:binding = </World/Looks/ExternalCameraMount> (
+                bindMaterialAs = "strongerThanDescendants"
+            )
+            quatd xformOp:orient = (6.123233995736766e-17, 4.329780281177466e-17, 0.7071067811865476, 0.7071067811865475)
+            double3 xformOp:scale = (1, 1, 1)
+            double3 xformOp:translate = (0, -0.022780342815431287, 0.015)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+
+            over "tn__0001_ASM_"
+            {
+                over "tn__1_bmf0zaj0"
+                {
+                    over "Mesh"
+                    {
+                        custom quatf xformOp:orient = (1, 0, 0, 0)
+                        custom float3 xformOp:scale = (1, 1, 1)
+                        double3 xformOp:translate = (0.06020525070086105, -0.012551881792145479, 0.6347620242140731)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                    }
+                }
+
+                over "tn__taKka7" (
+                    active = false
+                )
+                {
+                    over "Mesh" (
+                        active = false
+                    )
+                    {
+                    }
+                }
+
+                over "tn__2_bmf0zaj0" (
+                    active = false
+                )
+                {
+                }
+            }
+        }
+
+        def Camera "External"
+        {
+            float2 clippingRange = (0.01, 100)
+            float focalLength = 16
+            float focusDistance = 0.49999988
+            float horizontalAperture = 20.955
+            float verticalAperture = 15.71625
+            matrix4d xformOp:transform = ( (1, 0, 0, 0), (0, 1, 0, 0), (0, -0.23, 1, 0), (0, 0.06, 0.65, 1) )
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
     }
 }
+
+def "Render" (
+    hide_in_stage_window = true
+    no_delete = true
+)
+{
+    def "OmniverseKit"
+    {
+        def "HydraTextures" (
+            hide_in_stage_window = true
+            no_delete = true
+        )
+        {
+            def RenderProduct "omni_kit_widget_viewport_ViewportTexture_0" (
+                prepend apiSchemas = ["OmniRtxSettingsCommonAdvancedAPI_1", "OmniRtxSettingsRtAdvancedAPI_1", "OmniRtxSettingsPtAdvancedAPI_1", "OmniRtxSettingsParticleFieldAPI_1", "OmniRtxPostColorGradingAPI_1", "OmniRtxPostChromaticAberrationAPI_1", "OmniRtxPostBloomPhysicalAPI_1", "OmniRtxPostMatteObjectAPI_1", "OmniRtxPostCompositingAPI_1", "OmniRtxPostDofAPI_1", "OmniRtxPostMotionBlurAPI_1", "OmniRtxPostTvNoiseAPI_1", "OmniRtxPostTonemapIrayReinhardAPI_1", "OmniRtxPostDebugSettingsAPI_1", "OmniRtxDebugSettingsAPI_1"]
+                hide_in_stage_window = true
+                no_delete = true
+            )
+            {
+                rel camera = </OmniverseKit_Persp>
+                token omni:rtx:ambientOcclusion:denoiserMode = "none"
+                token omni:rtx:background:source:texture:textureMode = "repeatMirrored"
+                token omni:rtx:background:source:type = "domeLight"
+                bool omni:rtx:debug:view:pixelDebug:enableFixedTextPos = 1
+                token omni:rtx:directLighting:sampledLighting:denoisingTechnique = "None"
+                bool omni:rtx:dlss:frameGeneration = 0
+                bool omni:rtx:indirectDiffuse:denoiser:enabled = 0
+                bool omni:rtx:material:db:syncLoads = 1
+                token omni:rtx:post:dlss:execMode = "performance"
+                bool omni:rtx:post:registeredCompositing:invertColorCorrection = 1
+                bool omni:rtx:post:registeredCompositing:invertToneMap = 1
+                bool omni:rtx:pt:adaptiveSampling:filterError = 0
+                uint omni:rtx:pt:adaptiveSampling:fixedSppIterations = 2
+                uint omni:rtx:pt:maxSamplesPerLaunch = 2073600
+                uint omni:rtx:pt:mgpu:maxPixelsPerRegionExponent = 12
+                bool omni:rtx:reflections:denoiser:enabled = 0
+                token omni:rtx:rendermode = "PathTracing"
+                color3f omni:rtx:rt:ambientLight:color = (0.1, 0.1, 0.1)
+                bool omni:rtx:rt:demoire = 0
+                bool omni:rtx:rt:ecoMode:enabled
+                bool omni:rtx:rt:lightcache:spatialCache:dontResolveConflicts = 1
+                int omni:rtx:rt:sss:samples = 1
+                uint omni:rtx:rtpt:maxVolumeBounces = 15
+                float omni:rtx:rtpt:modulatingRoughnessThreshold = 0.08
+                bool omni:rtx:scene:hydra:materialSyncLoads = 1
+                bool omni:rtx:scene:hydra:mdlMaterialWarmup = 1
+                rel orderedVars = </Render/Vars/LdrColor>
+                custom bool overrideClipRange = 0
+                uniform int2 resolution = (1280, 720)
+            }
+        }
+    }
+
+    def RenderSettings "OmniverseGlobalRenderSettings" (
+        prepend apiSchemas = ["OmniRtxSettingsGlobalRtAdvancedAPI_1", "OmniRtxSettingsGlobalPtAdvancedAPI_1"]
+        no_delete = true
+    )
+    {
+        rel products = </Render/OmniverseKit/HydraTextures/omni_kit_widget_viewport_ViewportTexture_0>
+    }
+
+    def "Vars" (
+        hide_in_stage_window = true
+        no_delete = true
+    )
+    {
+        def RenderVar "LdrColor" (
+            hide_in_stage_window = true
+            no_delete = true
+        )
+        {
+            uniform string sourceName = "LdrColor"
+            uniform token sourceType = "raw"
+        }
+    }
+}
+
+over "OmniverseKit_Persp" (
+    prepend apiSchemas = ["OmniRtxCameraAutoExposureAPI_1", "OmniRtxCameraExposureAPI_1"]
+    customData = {
+        dictionary omni = {
+            dictionary kit = {
+                bool hide_in_stage_window = 1
+                bool no_delete = 1
+            }
+        }
+    }
+    hide_in_stage_window = true
+    kind = "component"
+    no_delete = true
+)
+{
+    float2 clippingRange = (0.01, 10000000)
+    float exposure:fStop = 5
+    float exposure:responsivity = 1.1026709
+    float exposure:time = 0.02
+    float focalLength = 18.147562
+    float focusDistance = 400
+    custom uniform vector3d omni:kit:centerOfInterest = (0, 0, -0.8093002388439842)
+    float3 xformOp:rotateXYZ = (33.07881, -5.2876723e-14, -172.49849)
+    float3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (-0.02990473805129279, 0.4329311938411265, 0.5861817711622531)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+}
+
+over "OmniverseKit_Front" (
+    customData = {
+        dictionary omni = {
+            dictionary kit = {
+                bool hide_in_stage_window = 1
+                bool no_delete = 1
+            }
+        }
+    }
+    hide_in_stage_window = true
+    kind = "component"
+    no_delete = true
+)
+{
+    float2 clippingRange = (1, 10000000)
+    float horizontalAperture = 50
+    custom uniform vector3d omni:kit:centerOfInterest = (0, 0, -5)
+    token projection = "orthographic"
+    float verticalAperture = 50
+    float3 xformOp:rotateXYZ = (90, -1.2722219e-14, 90)
+    float3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (5, 0, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+}
+
+over "OmniverseKit_Right" (
+    customData = {
+        dictionary omni = {
+            dictionary kit = {
+                bool hide_in_stage_window = 1
+                bool no_delete = 1
+            }
+        }
+    }
+    hide_in_stage_window = true
+    kind = "component"
+    no_delete = true
+)
+{
+    float2 clippingRange = (1, 10000000)
+    float horizontalAperture = 50
+    custom uniform vector3d omni:kit:centerOfInterest = (0, 0, -5)
+    token projection = "orthographic"
+    float verticalAperture = 50
+    float3 xformOp:rotateXYZ = (90, -1.41245e-30, 1.2722219e-14)
+    float3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0, -5, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+}
+
+over "OmniverseKit_Top" (
+    customData = {
+        dictionary omni = {
+            dictionary kit = {
+                bool hide_in_stage_window = 1
+                bool no_delete = 1
+            }
+        }
+    }
+    hide_in_stage_window = true
+    kind = "component"
+    no_delete = true
+)
+{
+    float2 clippingRange = (1, 10000000)
+    float horizontalAperture = 50
+    custom uniform vector3d omni:kit:centerOfInterest = (0, 0, -5)
+    token projection = "orthographic"
+    float verticalAperture = 50
+    float3 xformOp:rotateXYZ = (-1.2722219e-14, -7.016709e-15, -90)
+    float3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0, 0, 5)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+}
+
