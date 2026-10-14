@@ -194,6 +194,17 @@ ISAACSIM_ROOT=/path/to/isaacsim ./run.sh --leader-port /dev/ttyUSB0
 
 系统同时记录 `action`、`observation.state`、`observation.images.front`（腕部相机）、`observation.images.external`（顶部相机）与任务成功状态，频率 30 FPS，相机分辨率 640 × 480。
 
+### 任务场景变体
+
+工程内置两个任务场景，机器人、围栏和三路相机完全相同，用 `--variant` 选择：
+
+```bash
+./run.sh --variant vials        # 默认：三个小瓶放入瓶架
+./run.sh --variant stationery   # 两支笔和橡皮放入固定笔筒（原文具任务）
+```
+
+`stationery` 变体首次启动会自动生成场景 `scenes/rebot_stationery_pencil_cup.usda`，数据写入 `datasets/rebot_stationery_pencil_cup`，任务文本为 `Put the two pens and the eraser into the pencil cup`。对应的无硬件验证：`./run.sh --variant stationery --test`；相机预览截图：`.../python.sh scripts/capture_camera_previews.py --variant stationery`。
+
 ## 7. 数据集检查、可视化与回放
 
 ### 可视化数据集

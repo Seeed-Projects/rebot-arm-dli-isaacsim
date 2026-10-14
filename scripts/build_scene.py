@@ -38,9 +38,13 @@ except ModuleNotFoundError:
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = PROJECT_ROOT / "scenes" / "rebot_stationery_sorting.usda"
+DEFAULT_OUTPUT_STATIONERY = (
+    PROJECT_ROOT / "scenes" / "rebot_stationery_pencil_cup.usda"
+)
 ROBOT_ASSET = "../assets/rebot_physx/00-arm-rs_asm-v3.usd"
 CAMERA_MOUNT_ASSET = "../assets/camera/UVC32_mount_portable.usd"
 WORKSPACE_ASSET = "../assets/workspace/box.usdz"
+STATIONERY_ASSET = "../assets/stationery/stationery_models.usd"
 
 ROBOT_PATH = "/World/Robot"
 WORKSPACE_PATH = "/World/WorkspaceBox"
@@ -99,6 +103,21 @@ VIAL_RACK_COLOR = Gf.Vec3f(0.943, 0.241, 0.130)
 # The vial is 116.5 mm tall with its origin 17 mm above its base, so its
 # centre of mass sits at the bbox centre.
 VIAL_CENTER_OF_MASS_Z = 0.0413
+# Pencil-cup variant ("stationery"): the source Poly Haven stationery set
+# with a fixed pencil cup as the receptacle, and two pens plus an eraser as
+# the dynamic targets.  Kept alongside the vial scene as a second task.
+PENCIL_CUP_PATH = "/World/Environment/PencilCup"
+PENCIL_CUP_CENTER = Gf.Vec3d(-0.16, 0.12, 0.0365904756)
+STATIONERY_TARGET_SPECS = {
+    "pen_red": ("/World/Objects/PenRed", "/Stationery/PenRed", 0.012),
+    "pen_blue": ("/World/Objects/PenBlue", "/Stationery/PenBlue", 0.012),
+    "eraser": ("/World/Objects/Eraser", "/Stationery/Eraser", 0.025),
+}
+TARGET_SPECS_BY_VARIANT = {
+    "vials": TARGET_SPECS,
+    "stationery": STATIONERY_TARGET_SPECS,
+}
+STATIONERY_TARGET_CONTACT_OFFSET = 0.002
 GRIPPER_BODY_PATH = f"{ROBOT_PATH}/link6"
 ASSIST_JOINT_PATH = "/World/GraspAssistJoint"
 SIDE_CAMERA_PATH = "/World/Cameras/Side"
@@ -287,8 +306,19 @@ ROBOT_VISUAL_MATERIALS = {
 # Where the assist joint parks the active vial: its origin 118 mm out along
 # the tool axis puts the vial's upper half between the fingers and keeps its
 # base clear of the wrist, with the vial upright on the tool axis.
-GRASP_OFFSET = Gf.Vec3f(0.0, 0.0, 0.118)
-GRASP_LOCAL_ROT = Gf.Quatf(1.0, Gf.Vec3f(0.0, 0.0, 0.0))
+# Grasp-assist joint placement per scene variant: the offset/rotation carry
+# the wrist frame to the calibrated grasp point of the variant's test target.
+GRASP_JOINT_POSES = {
+    "vials": (
+        Gf.Vec3f(0.0, 0.0, 0.118),
+        Gf.Quatf(1.0, Gf.Vec3f(0.0, 0.0, 0.0)),
+    ),
+    "stationery": (
+        Gf.Vec3f(0.0, 0.0, 0.09121),
+        Gf.Quatf(0.0, Gf.Vec3f(-0.7071068, 0.0, -0.7071068)),
+    ),
+}
+ASSIST_JOINT_BODY_TARGET = {"vials": "vial_1", "stationery": "pen_red"}
 
 
 def _set_transform(
@@ -1088,15 +1118,181 @@ def _add_vial_targets(stage: Usd.Stage) -> None:
         )
 
 
-def _add_assist_joint(stage: Usd.Stage) -> None:
+def _stationery_material(stage: Usd.Stage) -> UsdShade.Material:
+    """Create the Poly Haven stationery PBR material in scene scope."""
+    path = "/World/Looks/StationeryPBR"
+    material = UsdShade.Material.Define(stage, path)
+    shader = UsdShade.Shader.Define(stage, f"{path}/PreviewSurface")
+    shader.CreateIdAttr("UsdPreviewSurface")
+
+    reader = UsdShade.Shader.Define(stage, f"{path}/PrimvarReader")
+    reader.CreateIdAttr("UsdPrimvarReader_float2")
+    reader.CreateInput("varname", Sdf.ValueTypeNames.Token).Set("st")
+
+    def texture(name: str, asset: str, color_space: str) -> UsdShade.Shader:
+        node = UsdShade.Shader.Define(stage, f"{path}/{name}")
+        node.CreateIdAttr("UsdUVTexture")
+        node.CreateInput("file", Sdf.ValueTypeNames.Asset).Set(asset)
+        node.CreateInput("sourceColorSpace", Sdf.ValueTypeNames.Token).Set(
+            color_space
+        )
+        node.CreateInput("st", Sdf.ValueTypeNames.Float2).ConnectToSource(
+            reader.ConnectableAPI(), "result"
+        )
+        return node
+
+    diffuse = texture(
+        "DiffuseTexture",
+        "../assets/stationery/textures/stationery_supplies_diff_4k.jpg",
+        "sRGB",
+    )
+    arm = texture(
+        "ArmTexture",
+        "../assets/stationery/textures/stationery_supplies_arm_4k.jpg",
+        "raw",
+    )
+    normal = texture(
+        "NormalTexture",
+        "../assets/stationery/textures/stationery_supplies_nor_gl_4k.exr",
+        "raw",
+    )
+    normal.CreateInput("scale", Sdf.ValueTypeNames.Float4).Set(
+        Gf.Vec4f(2.0, 2.0, 2.0, 1.0)
+    )
+    normal.CreateInput("bias", Sdf.ValueTypeNames.Float4).Set(
+        Gf.Vec4f(-1.0, -1.0, -1.0, 0.0)
+    )
+    shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).ConnectToSource(
+        diffuse.ConnectableAPI(), "rgb"
+    )
+    # Poly Haven's ARM map stores AO, roughness and metalness in RGB.
+    shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).ConnectToSource(
+        arm.ConnectableAPI(), "g"
+    )
+    shader.CreateInput("metallic", Sdf.ValueTypeNames.Float).ConnectToSource(
+        arm.ConnectableAPI(), "b"
+    )
+    shader.CreateInput("normal", Sdf.ValueTypeNames.Normal3f).ConnectToSource(
+        normal.ConnectableAPI(), "rgb"
+    )
+    material.CreateSurfaceOutput().ConnectToSource(
+        shader.ConnectableAPI(), "surface"
+    )
+    return material
+
+
+def _add_pencil_cup(
+    stage: Usd.Stage, visual_material: UsdShade.Material
+) -> None:
+    """Add the source pencil cup as a fixed concave collision receptacle."""
+    cup = UsdGeom.Xform.Define(stage, PENCIL_CUP_PATH)
+    cup.GetPrim().GetReferences().AddReference(
+        STATIONERY_ASSET, "/Stationery/Pencilcup"
+    )
+    _set_transform(cup.GetPrim(), translate=PENCIL_CUP_CENTER)
+    cup_mesh = stage.OverridePrim(f"{PENCIL_CUP_PATH}/Mesh")
+    UsdShade.MaterialBindingAPI.Apply(cup_mesh).Bind(
+        visual_material, UsdShade.Tokens.strongerThanDescendants
+    )
+    UsdPhysics.CollisionAPI.Apply(cup_mesh)
+    UsdPhysics.MeshCollisionAPI.Apply(cup_mesh).CreateApproximationAttr(
+        "none"
+    )
+
+
+def _add_stationery_targets(
+    stage: Usd.Stage, visual_material: UsdShade.Material
+) -> None:
+    """Add two pens and one eraser as independent dynamic rigid bodies."""
+    physics_material = UsdShade.Material.Define(
+        stage, STATIONERY_PHYSICS_MATERIAL_PATH
+    )
+    physics_api = UsdPhysics.MaterialAPI.Apply(physics_material.GetPrim())
+    physics_api.CreateStaticFrictionAttr(STATIONERY_STATIC_FRICTION)
+    physics_api.CreateDynamicFrictionAttr(STATIONERY_DYNAMIC_FRICTION)
+    physics_api.CreateRestitutionAttr(0.0)
+    physx_material = PhysxSchema.PhysxMaterialAPI.Apply(
+        physics_material.GetPrim()
+    )
+    physx_material.CreateFrictionCombineModeAttr(PhysxSchema.Tokens.max)
+    physx_material.CreateRestitutionCombineModeAttr(
+        PhysxSchema.Tokens.min
+    )
+    physx_material.CreateDampingCombineModeAttr(PhysxSchema.Tokens.max)
+    _enable_patch_friction(physx_material)
+
+    # Spawned above the work surface; they drop and settle like the vials.
+    initial_poses = {
+        "pen_red": ((0.07, 0.02, 0.075), 18.0),
+        "pen_blue": ((0.15, 0.18, 0.095), -32.0),
+        "eraser": ((0.115, 0.095, 0.055), 28.0),
+    }
+    for name, (path, source_prim, mass_kg) in STATIONERY_TARGET_SPECS.items():
+        target = UsdGeom.Xform.Define(stage, path)
+        target.GetPrim().GetReferences().AddReference(
+            STATIONERY_ASSET, source_prim
+        )
+        position, yaw_deg = initial_poses[name]
+        yaw = math.radians(yaw_deg)
+        _set_transform(
+            target.GetPrim(),
+            translate=Gf.Vec3d(*position),
+            orient=Gf.Quatd(
+                math.cos(yaw / 2.0),
+                Gf.Vec3d(0.0, 0.0, math.sin(yaw / 2.0)),
+            ),
+        )
+        rigid = UsdPhysics.RigidBodyAPI.Apply(target.GetPrim())
+        # Dynamic from the start, matching the vial targets: only the cup
+        # and the enclosure are static.
+        rigid.CreateKinematicEnabledAttr(False)
+        physx_rigid = PhysxSchema.PhysxRigidBodyAPI.Apply(target.GetPrim())
+        physx_rigid.CreateMaxDepenetrationVelocityAttr(
+            OBJECT_MAX_DEPENETRATION_VELOCITY
+        )
+        physx_rigid.CreateMaxContactImpulseAttr(OBJECT_MAX_CONTACT_IMPULSE)
+        mass = UsdPhysics.MassAPI.Apply(target.GetPrim())
+        mass.CreateMassAttr(mass_kg)
+        mass.CreateCenterOfMassAttr(Gf.Vec3f(0.0))
+
+        mesh = stage.OverridePrim(f"{path}/Mesh")
+        UsdShade.MaterialBindingAPI.Apply(mesh).Bind(
+            visual_material, UsdShade.Tokens.strongerThanDescendants
+        )
+        UsdPhysics.CollisionAPI.Apply(mesh)
+        UsdPhysics.FilteredPairsAPI.Apply(mesh).CreateFilteredPairsRel()
+        UsdPhysics.MeshCollisionAPI.Apply(mesh).CreateApproximationAttr(
+            "convexHull"
+        )
+        physx_collision = PhysxSchema.PhysxCollisionAPI.Apply(mesh)
+        physx_collision.CreateContactOffsetAttr(
+            STATIONERY_TARGET_CONTACT_OFFSET
+        )
+        physx_collision.CreateRestOffsetAttr(STATIONERY_REST_OFFSET)
+        physx_collision.CreateTorsionalPatchRadiusAttr(
+            STATIONERY_TORSIONAL_PATCH_RADIUS
+        )
+        physx_collision.CreateMinTorsionalPatchRadiusAttr(
+            STATIONERY_TORSIONAL_PATCH_RADIUS
+        )
+        UsdShade.MaterialBindingAPI(mesh).Bind(
+            physics_material,
+            UsdShade.Tokens.weakerThanDescendants,
+            "physics",
+        )
+
+
+def _add_assist_joint(stage: Usd.Stage, variant: str = "vials") -> None:
     joint = UsdPhysics.FixedJoint.Define(stage, ASSIST_JOINT_PATH)
     joint.CreateBody0Rel().SetTargets([Sdf.Path(GRIPPER_BODY_PATH)])
+    target_specs = TARGET_SPECS_BY_VARIANT[variant]
     joint.CreateBody1Rel().SetTargets(
-        [Sdf.Path(TARGET_SPECS["vial_1"][0])]
+        [Sdf.Path(target_specs[ASSIST_JOINT_BODY_TARGET[variant]][0])]
     )
-    joint.CreateLocalPos0Attr(GRASP_OFFSET)
+    offset, local_rot = GRASP_JOINT_POSES[variant]
+    joint.CreateLocalPos0Attr(offset)
     joint.CreateLocalPos1Attr(Gf.Vec3f(0.0))
-    joint.CreateLocalRot0Attr(GRASP_LOCAL_ROT)
+    joint.CreateLocalRot0Attr(local_rot)
     joint.CreateLocalRot1Attr(Gf.Quatf(1.0))
     joint.CreateJointEnabledAttr(False)
     joint.GetPrim().SetCustomDataByKey("purpose", "reliable_demo_grasp_assist")
@@ -1117,7 +1313,14 @@ def _add_gripper_collision_filter(stage: Usd.Stage) -> None:
     group.CreateFilteredGroupsRel().AddTarget(group_path)
 
 
-def build_scene(output: Path = DEFAULT_OUTPUT) -> Path:
+def build_scene(
+    output: Path = DEFAULT_OUTPUT, variant: str = "vials"
+) -> Path:
+    if variant not in TARGET_SPECS_BY_VARIANT:
+        raise ValueError(
+            f"Unknown scene variant: {variant!r}; "
+            f"expected one of {sorted(TARGET_SPECS_BY_VARIANT)}"
+        )
     output = output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1155,7 +1358,12 @@ def build_scene(output: Path = DEFAULT_OUTPUT) -> Path:
     )
     _add_workspace_box(stage)
     _add_table(stage, table_top_material, table_leg_material)
-    _add_vial_rack(stage)
+    stationery_material = None
+    if variant == "stationery":
+        stationery_material = _stationery_material(stage)
+        _add_pencil_cup(stage, stationery_material)
+    else:
+        _add_vial_rack(stage)
     _cube(
         stage,
         "/World/Environment/Floor",
@@ -1173,8 +1381,11 @@ def build_scene(output: Path = DEFAULT_OUTPUT) -> Path:
     _configure_arm_physics(stage)
     _configure_gripper_physics(stage)
     _add_gripper_physics_material(stage)
-    _add_vial_targets(stage)
-    _add_assist_joint(stage)
+    if variant == "stationery":
+        _add_stationery_targets(stage, stationery_material)
+    else:
+        _add_vial_targets(stage)
+    _add_assist_joint(stage, variant)
     _add_gripper_collision_filter(stage)
     _add_lighting(stage)
     _add_cameras(stage)
@@ -1186,10 +1397,22 @@ def build_scene(output: Path = DEFAULT_OUTPUT) -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument(
+        "--variant",
+        choices=sorted(TARGET_SPECS_BY_VARIANT),
+        default="vials",
+        help="Scene content to generate: vials+vial rack (default) or "
+        "pens+eraser with a fixed pencil cup",
+    )
+    parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args()
+    output = args.output or (
+        DEFAULT_OUTPUT_STATIONERY
+        if args.variant == "stationery"
+        else DEFAULT_OUTPUT
+    )
     try:
-        build_scene(args.output)
+        build_scene(output, variant=args.variant)
     finally:
         if _simulation_app is not None:
             _simulation_app.close()

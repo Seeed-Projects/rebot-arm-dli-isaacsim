@@ -1,0 +1,122 @@
+{
+  "physics_dt": 0.008333333333333333,
+  "rendering_dt": 0.008333333333333333,
+  "robot_prim_path": "/World/Robot/root_joint",
+  "target_prim_paths": {
+    "pen_red": "/World/Objects/PenRed",
+    "pen_blue": "/World/Objects/PenBlue",
+    "eraser": "/World/Objects/Eraser"
+  },
+  "workspace_prim_path": "/World/WorkspaceBox",
+  "assist_joint_path": "/World/GraspAssistJoint",
+  "assist_body_path": "/World/Robot/link6",
+  "arm_joint_names": [
+    "joint1",
+    "joint2",
+    "joint3",
+    "joint4",
+    "joint5",
+    "joint6"
+  ],
+  "gripper_joint_names": [
+    "joint_left",
+    "joint_right"
+  ],
+  "gripper": {
+    "opened_m": 0.045,
+    "closed_m": 0.034
+  },
+  "poses_deg": {
+    "home": [
+      0.0,
+      -45.0,
+      -45.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "pregrasp": [
+      0.0,
+      -80.0,
+      -45.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "grasp": [
+      0.0,
+      -90.0,
+      -45.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "lift": [
+      0.0,
+      -70.0,
+      -45.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "durations_s": {
+    "settle": 1.0,
+    "move_pregrasp": 3.0,
+    "approach": 2.5,
+    "close": 1.5,
+    "lift": 3.0,
+    "hold": 2.0
+  },
+  "test_object_name": "pen_red",
+  "test_object_pose": {
+    "position": [
+      0.0,
+      0.0355169653,
+      0.1193964749
+    ],
+    "orientation_wxyz": [
+      0.6532814824,
+      0.2705980501,
+      0.2705980501,
+      -0.6532814824
+    ]
+  },
+  "assist_grasp_offset_m": [
+    0.0,
+    0.0,
+    0.09121
+  ],
+  "assist_grasp_orientation_wxyz": [
+    0.0,
+    -0.7071068,
+    0.0,
+    -0.7071068
+  ],
+  "success_min_lift_m": 0.08,
+  "camera": {
+    "eye": [
+      0.37,
+      -0.05,
+      0.6
+    ],
+    "target": [
+      0.0,
+      0.25,
+      0.16
+    ]
+  },
+  "receptacle_prim_path": "/World/Environment/PencilCup",
+  "receptacle": {
+    "center_xy_m": [
+      -0.16,
+      0.12
+    ],
+    "success_radius_m": 0.038,
+    "success_min_z_m": 0.01,
+    "success_max_z_m": 0.16,
+    "success_max_speed_mps": 0.25,
+    "success_settle_time_s": 0.35
+  },
+  "receptacle_label": "pencil cup"
+}

@@ -26,11 +26,36 @@ BRIDGE_SCRIPT = PROJECT_ROOT / "scripts" / "leader_bridge.py"
 DATASET_WRITER_SCRIPT = PROJECT_ROOT / "scripts" / "dataset_writer.py"
 # The vial asset ships its own collider mesh, and its shape is expressed as a
 # box so the proximity heuristic does not have to assume an axis.
-TARGET_COLLIDER_SUFFIX = "/collider"
-TARGET_GRASP_GEOMETRY = {
-    "vial_1": {"half_extents": (0.017, 0.017, 0.058)},
-    "vial_2": {"half_extents": (0.017, 0.017, 0.058)},
-    "vial_3": {"half_extents": (0.017, 0.017, 0.058)},
+TARGET_COLLIDER_SUFFIXES = {
+    "vials": "/collider",
+    # The stationery targets get an authored convex-hull override prim.
+    "stationery": "/Mesh",
+}
+TARGET_GRASP_GEOMETRIES = {
+    "vials": {
+        "vial_1": {"half_extents": (0.017, 0.017, 0.058)},
+        "vial_2": {"half_extents": (0.017, 0.017, 0.058)},
+        "vial_3": {"half_extents": (0.017, 0.017, 0.058)},
+    },
+    "stationery": {
+        "pen_red": {"half_length": 0.068, "radius": 0.0040},
+        "pen_blue": {"half_length": 0.078, "radius": 0.0047},
+        "eraser": {"half_extents": (0.0223, 0.0093, 0.0053)},
+    },
+}
+VARIANT_DEFAULTS = {
+    "vials": {
+        "scene": DEFAULT_SCENE,
+        "grasp_config": DEFAULT_GRASP_CONFIG,
+        "dr_config": DEFAULT_DR_CONFIG,
+    },
+    "stationery": {
+        "scene": PROJECT_ROOT / "scenes" / "rebot_stationery_pencil_cup.usda",
+        "grasp_config": PROJECT_ROOT / "config" / "grasp_config_stationery.json",
+        "dr_config": PROJECT_ROOT
+        / "config"
+        / "domain_randomization_stationery.json",
+    },
 }
 
 
@@ -48,6 +73,13 @@ def _resolve_leader_python(value: str | Path) -> Path:
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--headless", action="store_true", help="Run without the Isaac Sim GUI")
+    parser.add_argument(
+        "--variant",
+        choices=sorted(VARIANT_DEFAULTS),
+        default="vials",
+        help="Task scene: vials into the vial rack (default), or pens and "
+        "eraser into the fixed pencil cup",
+    )
     parser.add_argument("--leader-port", help="Leader serial port, for example /dev/ttyUSB0")
     parser.add_argument("--leader-python", type=Path)
     parser.add_argument(
@@ -62,9 +94,9 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--rebuild-scene", action="store_true")
     parser.add_argument("--config", type=Path, default=DEFAULT_TELEOP_CONFIG)
-    parser.add_argument("--grasp-config", type=Path, default=DEFAULT_GRASP_CONFIG)
-    parser.add_argument("--dr-config", type=Path, default=DEFAULT_DR_CONFIG)
-    parser.add_argument("--scene", type=Path, default=DEFAULT_SCENE)
+    parser.add_argument("--grasp-config", type=Path, default=None)
+    parser.add_argument("--dr-config", type=Path, default=None)
+    parser.add_argument("--scene", type=Path, default=None)
     parser.add_argument(
         "--no-dr",
         action="store_true",
@@ -98,10 +130,23 @@ def _parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     if args.test_recording:
         args.test = True
+    # Unspecified scene/config paths follow the selected task variant.
+    defaults = VARIANT_DEFAULTS[args.variant]
+    if args.scene is None:
+        args.scene = defaults["scene"]
+    if args.grasp_config is None:
+        args.grasp_config = defaults["grasp_config"]
+    if args.dr_config is None:
+        args.dr_config = defaults["dr_config"]
     return args
 
 
 ARGS = _parse_args()
+
+# Variant-selected proximity geometry and collider naming; rebound here so
+# the rest of the module can keep referencing the singular names.
+TARGET_COLLIDER_SUFFIX = TARGET_COLLIDER_SUFFIXES[ARGS.variant]
+TARGET_GRASP_GEOMETRY = TARGET_GRASP_GEOMETRIES[ARGS.variant]
 
 try:
     from isaacsim import SimulationApp
@@ -287,8 +332,18 @@ class LeaderTeleop:
             str(name): str(path)
             for name, path in self.grasp_config["target_prim_paths"].items()
         }
-        self.vial_rack_path = str(
-            self.grasp_config["vial_rack_prim_path"]
+        # The vial config names the rack "vial_rack_*"; the stationery
+        # config uses the generic receptacle keys.
+        if "receptacle_prim_path" in self.grasp_config:
+            self.vial_rack_path = str(
+                self.grasp_config["receptacle_prim_path"]
+            )
+        else:
+            self.vial_rack_path = str(
+                self.grasp_config["vial_rack_prim_path"]
+            )
+        self.receptacle_label = str(
+            self.grasp_config.get("receptacle_label", "vial rack")
         )
         self.workspace_path = str(
             self.grasp_config["workspace_prim_path"]
@@ -377,7 +432,10 @@ class LeaderTeleop:
             self.grasp_config["assist_grasp_orientation_wxyz"],
             dtype=np.float64,
         )
-        rack_cfg = self.grasp_config["vial_rack"]
+        if "receptacle" in self.grasp_config:
+            rack_cfg = self.grasp_config["receptacle"]
+        else:
+            rack_cfg = self.grasp_config["vial_rack"]
         self.rack_center_xy = np.asarray(
             rack_cfg["center_xy_m"], dtype=np.float64
         )
@@ -479,7 +537,7 @@ class LeaderTeleop:
 
     def setup(self) -> None:
         if ARGS.rebuild_scene or not self.scene_path.exists():
-            build_scene(self.scene_path)
+            build_scene(self.scene_path, variant=ARGS.variant)
         if not open_stage(str(self.scene_path)):
             raise RuntimeError(f"Unable to open scene: {self.scene_path}")
         self._wait_for_stage()
@@ -511,7 +569,9 @@ class LeaderTeleop:
         ):
             reasons = []
             if missing_scene_content:
-                reasons.append("front/side/external cameras, table, vials, or fixed vial rack")
+                reasons.append(
+                    f"cameras, table, objects, or fixed {self.receptacle_label}"
+                )
             if missing_gripper_fix:
                 reasons.append("PR #21 gravity-resistant gripper drives and 1:1 linkage")
             if missing_robot_appearance:
@@ -522,7 +582,7 @@ class LeaderTeleop:
                 "[scene] An outdated scene was detected; rebuilding "
                 + "、".join(reasons)
             )
-            build_scene(self.scene_path)
+            build_scene(self.scene_path, variant=ARGS.variant)
             if not open_stage(str(self.scene_path)):
                 raise RuntimeError(f"Unable to reopen scene: {self.scene_path}")
             self._wait_for_stage()
@@ -696,7 +756,7 @@ class LeaderTeleop:
         print(f"  Receiver: udp://{self.host}:{self.port}")
         print(f"  Grasp mode: {mode}")
         print(
-            "  Task: put the three vials into the fixed vial rack "
+            f"  Task: {self.dr_config['recording']['task_name']} "
             f"({self.rack_center_xy[0]:.2f}, "
             f"{self.rack_center_xy[1]:.2f})m"
         )
@@ -1090,7 +1150,7 @@ class LeaderTeleop:
         if in_rack != self.objects_in_rack:
             self.objects_in_rack = in_rack
             print(
-                "[SORT] In vial rack: "
+                f"[SORT] In {self.receptacle_label}: "
                 + (", ".join(sorted(in_rack)) if in_rack else "none")
                 + f" ({len(in_rack)}/{len(self.targets)})"
             )
@@ -1111,7 +1171,8 @@ class LeaderTeleop:
         ):
             self.episode_success = True
             print(
-                "[SUCCESS] All three vials are stable in the rack: "
+                f"[SUCCESS] All objects are stable in the "
+                f"{self.receptacle_label}: "
                 f"center distances={distances}, "
                 f"settle time={self.rack_settle_elapsed:.2f}s"
             )

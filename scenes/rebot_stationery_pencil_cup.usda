@@ -1,0 +1,1152 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    endTimeCode = 1200
+    metersPerUnit = 1
+    renderSettingsPrimPath = "/Render"
+    startTimeCode = 0
+    timeCodesPerSecond = 120
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Scope "Looks"
+    {
+        def Material "Floor"
+        {
+            token outputs:surface.connect = </World/Looks/Floor/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.14, 0.16, 0.19)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.8
+                token outputs:surface
+            }
+        }
+
+        def Material "TableTop"
+        {
+            token outputs:surface.connect = </World/Looks/TableTop/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.3, 0.16, 0.075)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.48
+                token outputs:surface
+            }
+        }
+
+        def Material "TableLegs"
+        {
+            token outputs:surface.connect = </World/Looks/TableLegs/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.055, 0.06, 0.07)
+                float inputs:metallic = 0.65
+                float inputs:roughness = 0.36
+                token outputs:surface
+            }
+        }
+
+        def Material "StationeryPBR"
+        {
+            token outputs:surface.connect = </World/Looks/StationeryPBR/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor.connect = </World/Looks/StationeryPBR/DiffuseTexture.outputs:rgb>
+                float inputs:metallic.connect = </World/Looks/StationeryPBR/ArmTexture.outputs:b>
+                normal3f inputs:normal.connect = </World/Looks/StationeryPBR/NormalTexture.outputs:rgb>
+                float inputs:roughness.connect = </World/Looks/StationeryPBR/ArmTexture.outputs:g>
+                token outputs:surface
+            }
+
+            def Shader "PrimvarReader"
+            {
+                uniform token info:id = "UsdPrimvarReader_float2"
+                token inputs:varname = "st"
+                float2 outputs:result
+            }
+
+            def Shader "DiffuseTexture"
+            {
+                uniform token info:id = "UsdUVTexture"
+                asset inputs:file = @../assets/stationery/textures/stationery_supplies_diff_4k.jpg@
+                token inputs:sourceColorSpace = "sRGB"
+                float2 inputs:st.connect = </World/Looks/StationeryPBR/PrimvarReader.outputs:result>
+                color3f outputs:rgb
+            }
+
+            def Shader "ArmTexture"
+            {
+                uniform token info:id = "UsdUVTexture"
+                asset inputs:file = @../assets/stationery/textures/stationery_supplies_arm_4k.jpg@
+                token inputs:sourceColorSpace = "raw"
+                float2 inputs:st.connect = </World/Looks/StationeryPBR/PrimvarReader.outputs:result>
+                float outputs:b
+                float outputs:g
+            }
+
+            def Shader "NormalTexture"
+            {
+                uniform token info:id = "UsdUVTexture"
+                float4 inputs:bias = (-1, -1, -1, 0)
+                asset inputs:file = @../assets/stationery/textures/stationery_supplies_nor_gl_4k.exr@
+                float4 inputs:scale = (2, 2, 2, 1)
+                token inputs:sourceColorSpace = "raw"
+                float2 inputs:st.connect = </World/Looks/StationeryPBR/PrimvarReader.outputs:result>
+                normal3f outputs:rgb
+            }
+        }
+
+        def Material "ReBotGreen"
+        {
+            token outputs:surface.connect = </World/Looks/ReBotGreen/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.278, 0.616, 0.298)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.45
+                token outputs:surface
+            }
+        }
+
+        def Material "ReBotBlack"
+        {
+            token outputs:surface.connect = </World/Looks/ReBotBlack/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.055, 0.055, 0.062)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.55
+                token outputs:surface
+            }
+        }
+
+        def Material "ReBotAluminium"
+        {
+            token outputs:surface.connect = </World/Looks/ReBotAluminium/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.78, 0.8, 0.83)
+                float inputs:metallic = 0.85
+                float inputs:roughness = 0.32
+                token outputs:surface
+            }
+        }
+
+        def Material "ReBotMotor"
+        {
+            token outputs:surface.connect = </World/Looks/ReBotMotor/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.13, 0.13, 0.14)
+                float inputs:metallic = 0.6
+                float inputs:roughness = 0.38
+                token outputs:surface
+            }
+        }
+
+        def Material "GripperPhysics" (
+            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
+        )
+        {
+            float physics:dynamicFriction = 2
+            float physics:restitution = 0
+            float physics:staticFriction = 2.4
+            uniform token physxMaterial:frictionCombineMode = "max"
+            uniform token physxMaterial:restitutionCombineMode = "min"
+        }
+
+        def Material "StationeryPhysics" (
+            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
+        )
+        {
+            float physics:dynamicFriction = 1.5
+            float physics:restitution = 0
+            float physics:staticFriction = 1.8
+            uniform token physxMaterial:dampingCombineMode = "max"
+            uniform token physxMaterial:frictionCombineMode = "max"
+            uniform token physxMaterial:restitutionCombineMode = "min"
+        }
+
+        def Material "WarmLightStrip"
+        {
+            token outputs:surface.connect = </World/Looks/WarmLightStrip/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (1, 0.64, 0.32)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.22
+                token outputs:surface
+            }
+        }
+
+        def Material "FixedCamera"
+        {
+            token outputs:surface.connect = </World/Looks/FixedCamera/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.035, 0.038, 0.045)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.45
+                token outputs:surface
+            }
+        }
+
+        def Material "FixedCameraLens"
+        {
+            token outputs:surface.connect = </World/Looks/FixedCameraLens/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.015, 0.025, 0.05)
+                float inputs:metallic = 0.25
+                float inputs:roughness = 0.12
+                token outputs:surface
+            }
+        }
+
+        def Material "ExternalCameraMount"
+        {
+            token outputs:surface.connect = </World/Looks/ExternalCameraMount/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.42, 0.44, 0.47)
+                float inputs:metallic = 0.55
+                float inputs:roughness = 0.55
+                token outputs:surface
+            }
+        }
+
+        def Material "UVC32Mount"
+        {
+            token outputs:surface.connect = </World/Looks/UVC32Mount/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.035, 0.038, 0.045)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.62
+                token outputs:surface
+            }
+        }
+
+        def Material "UVC32PCB"
+        {
+            token outputs:surface.connect = </World/Looks/UVC32PCB/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.025, 0.19, 0.09)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.52
+                token outputs:surface
+            }
+        }
+
+        def Material "UVC32Housing"
+        {
+            token outputs:surface.connect = </World/Looks/UVC32Housing/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.045, 0.048, 0.055)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.42
+                token outputs:surface
+            }
+        }
+
+        def Material "UVC32Lens"
+        {
+            token outputs:surface.connect = </World/Looks/UVC32Lens/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.012, 0.018, 0.03)
+                float inputs:metallic = 0.35
+                float inputs:roughness = 0.12
+                token outputs:surface
+            }
+        }
+    }
+
+    def Scope "Lights"
+    {
+        def DomeLight "Dome"
+        {
+            color3f inputs:color = (0.94, 0.96, 1)
+            float inputs:intensity = 800
+        }
+
+        def DistantLight "Key"
+        {
+            float inputs:angle = 4
+            color3f inputs:color = (1, 0.94, 0.82)
+            float inputs:intensity = 650
+            quatd xformOp:orient = (0.8433914458128857, 0.5372996083468239, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:orient"]
+        }
+
+        def Cube "WarmStripVisual_1"
+        {
+            rel material:binding = </World/Looks/WarmLightStrip>
+            double size = 1
+            double3 xformOp:scale = (0.035, 0.44, 0.008)
+            double3 xformOp:translate = (-0.2, 0.2, 0.625)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def RectLight "WarmStrip_1"
+        {
+            color3f inputs:color = (1, 0.84, 0.68)
+            float inputs:colorTemperature = 4000
+            bool inputs:enableColorTemperature = 1
+            float inputs:height = 0.44
+            float inputs:intensity = 950
+            bool inputs:normalize = 1
+            float inputs:width = 0.035
+            double3 xformOp:translate = (-0.2, 0.2, 0.618)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+
+        def Cube "WarmStripVisual_2"
+        {
+            rel material:binding = </World/Looks/WarmLightStrip>
+            double size = 1
+            double3 xformOp:scale = (0.035, 0.44, 0.008)
+            double3 xformOp:translate = (0.2, 0.2, 0.625)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def RectLight "WarmStrip_2"
+        {
+            color3f inputs:color = (1, 0.84, 0.68)
+            float inputs:colorTemperature = 4000
+            bool inputs:enableColorTemperature = 1
+            float inputs:height = 0.44
+            float inputs:intensity = 950
+            bool inputs:normalize = 1
+            float inputs:width = 0.035
+            double3 xformOp:translate = (0.2, 0.2, 0.618)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+    }
+
+    def Xform "WorkspaceBox" (
+        prepend references = @../assets/workspace/box.usdz@
+    )
+    {
+        double3 xformOp:scale = (0.9571788413098237, 0.8581358429039316, 1.0769230769230769)
+        double3 xformOp:translate = (0, 0.044241756031979884, -0.5368030769230769)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+
+        over "box"
+        {
+            over "Base_08q"
+            {
+                over "tn__131_m6"
+                {
+                    over "tn__13_"
+                    {
+                        over "Mesh" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+                        )
+                        {
+                            uniform token physics:approximation = "none"
+                        }
+                    }
+                }
+            }
+
+            over "DiskLight" (
+                active = false
+            )
+            {
+            }
+        }
+    }
+
+    def "Environment"
+    {
+        def Xform "Table"
+        {
+            def Cube "Top" (
+                prepend apiSchemas = ["PhysicsCollisionAPI"]
+            )
+            {
+                rel material:binding = </World/Looks/TableTop>
+                double size = 1
+                double3 xformOp:scale = (1.15, 0.95, 0.05)
+                double3 xformOp:translate = (0, 0.22, -0.028233851320000003)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cube "Leg_1" (
+                prepend apiSchemas = ["PhysicsCollisionAPI"]
+            )
+            {
+                rel material:binding = </World/Looks/TableLegs>
+                double size = 1
+                double3 xformOp:scale = (0.065, 0.065, 0.38676614868)
+                double3 xformOp:translate = (-0.49, -0.17, -0.24661692566)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cube "Leg_2" (
+                prepend apiSchemas = ["PhysicsCollisionAPI"]
+            )
+            {
+                rel material:binding = </World/Looks/TableLegs>
+                double size = 1
+                double3 xformOp:scale = (0.065, 0.065, 0.38676614868)
+                double3 xformOp:translate = (-0.49, 0.61, -0.24661692566)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cube "Leg_3" (
+                prepend apiSchemas = ["PhysicsCollisionAPI"]
+            )
+            {
+                rel material:binding = </World/Looks/TableLegs>
+                double size = 1
+                double3 xformOp:scale = (0.065, 0.065, 0.38676614868)
+                double3 xformOp:translate = (0.49, -0.17, -0.24661692566)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cube "Leg_4" (
+                prepend apiSchemas = ["PhysicsCollisionAPI"]
+            )
+            {
+                rel material:binding = </World/Looks/TableLegs>
+                double size = 1
+                double3 xformOp:scale = (0.065, 0.065, 0.38676614868)
+                double3 xformOp:translate = (0.49, 0.61, -0.24661692566)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+        }
+
+        def Xform "PencilCup" (
+            prepend references = @../assets/stationery/stationery_models.usd@</Stationery/Pencilcup>
+        )
+        {
+            double3 xformOp:translate = (-0.16, 0.12, 0.0365904756)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            over "Mesh" (
+                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+            )
+            {
+                rel material:binding = </World/Looks/StationeryPBR> (
+                    bindMaterialAs = "strongerThanDescendants"
+                )
+                uniform token physics:approximation = "none"
+            }
+        }
+
+        def Cube "Floor" (
+            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        )
+        {
+            rel material:binding = </World/Looks/Floor>
+            double size = 1
+            double3 xformOp:scale = (4, 4, 0.06)
+            double3 xformOp:translate = (0, 0, -0.47)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+    }
+
+    def PhysicsScene "PhysicsScene"
+    {
+        vector3f physics:gravityDirection = (0, 0, -1)
+        float physics:gravityMagnitude = 9.81
+    }
+
+    def Xform "Robot" (
+        prepend references = @../assets/rebot_physx/00-arm-rs_asm-v3.usd@
+    )
+    {
+        quatd xformOp:orient = (0.7071067811865476, 0, 0, -0.7071067811865475)
+        double3 xformOp:translate = (0, 0.45488233155, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+
+        over "base_link"
+        {
+            over "visuals" (
+                instanceable = false
+            )
+            {
+                over "base_link" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotAluminium> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+            }
+        }
+
+        over "gripper_left"
+        {
+            over "visuals" (
+                instanceable = false
+            )
+            {
+                over "pla_left" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotBlack> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+
+                over "cnc_left" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotAluminium> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+            }
+
+            over "collisions" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding:physics = </World/Looks/GripperPhysics> (
+                    bindMaterialAs = "strongerThanDescendants"
+                )
+            }
+        }
+
+        over "gripper_right"
+        {
+            over "visuals" (
+                instanceable = false
+            )
+            {
+                over "pla_right" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotBlack> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+
+                over "cnc_right" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotAluminium> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+            }
+
+            over "collisions" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding:physics = </World/Looks/GripperPhysics> (
+                    bindMaterialAs = "strongerThanDescendants"
+                )
+            }
+        }
+
+        over "link1"
+        {
+            over "visuals" (
+                instanceable = false
+            )
+            {
+                over "link1" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotAluminium> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+            }
+        }
+
+        over "link2"
+        {
+            over "visuals" (
+                instanceable = false
+            )
+            {
+                over "motor_2_3" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotMotor> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+
+                over "cnc2" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotAluminium> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+
+                over "pla2_black" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotBlack> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+
+                over "pla2_green" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotGreen> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+            }
+        }
+
+        over "link3"
+        {
+            over "visuals" (
+                instanceable = false
+            )
+            {
+                over "cnc3" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotAluminium> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+
+                over "motor_4" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotMotor> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+
+                over "pla3_black" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotBlack> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+
+                over "pla3_green" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotGreen> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+            }
+        }
+
+        over "link4"
+        {
+            over "visuals" (
+                instanceable = false
+            )
+            {
+                over "motor_5" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotMotor> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+
+                over "cnc4" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotAluminium> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+            }
+        }
+
+        over "link5"
+        {
+            over "visuals" (
+                instanceable = false
+            )
+            {
+                over "motor_6" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotMotor> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+
+                over "cnc5" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotAluminium> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+
+                over "pla5_green" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotGreen> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+            }
+        }
+
+        over "link6"
+        {
+            over "visuals" (
+                instanceable = false
+            )
+            {
+                over "link6" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotAluminium> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+
+                over "pla7_green" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotGreen> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+
+                over "cnc7" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotAluminium> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+
+                over "motor_7" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/ReBotMotor> (
+                        bindMaterialAs = "strongerThanDescendants"
+                    )
+                }
+            }
+
+            def Xform "UVC32Mount" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+                prepend references = @../assets/camera/UVC32_mount_portable.usd@
+            )
+            {
+                rel material:binding = </World/Looks/UVC32Mount> (
+                    bindMaterialAs = "strongerThanDescendants"
+                )
+                quatd xformOp:orient = (0.7062529194, -0.0026105535, -0.0110436469, -0.7078686578)
+                double3 xformOp:translate = (0.023151717, -0.0002007298, 0.0477621244)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+
+                def Cube "UVC32Camera"
+                {
+                    rel material:binding = </World/Looks/UVC32PCB>
+                    double size = 1
+                    quatd xformOp:orient = (2.5746849097174618e-11, -7.67641505916572e-12, -0.29621554437178865, 0.9551211186004986)
+                    double3 xformOp:scale = (0.032, 0.032, 0.0016)
+                    double3 xformOp:translate = (0.0000014555909873983853, 0.08218025728194717, -0.0022930491725059363)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+
+                    def Cylinder "LensHousing"
+                    {
+                        uniform token axis = "Z"
+                        double height = 0.006
+                        rel material:binding = </World/Looks/UVC32Housing>
+                        double radius = 0.0065
+                        double3 xformOp:translate = (0, 0, 0.0069)
+                        uniform token[] xformOpOrder = ["xformOp:translate"]
+                    }
+
+                    def Cylinder "LensGlass"
+                    {
+                        uniform token axis = "Z"
+                        double height = 0.001
+                        rel material:binding = </World/Looks/UVC32Lens>
+                        double radius = 0.0047
+                        double3 xformOp:translate = (0, 0, 0.0094)
+                        uniform token[] xformOpOrder = ["xformOp:translate"]
+                    }
+
+                    def Camera "FrontCamera"
+                    {
+                        float2 clippingRange = (0.01, 100)
+                        float focalLength = 11.04
+                        float focusDistance = 0.15358633
+                        float horizontalAperture = 20.955
+                        float verticalAperture = 15.71625
+                        matrix4d xformOp:transform = ( (1, 0, -0, -0), (0, -1, 0, 0), (0, 0, -1, 0), (0, 0, 0.0099, 1) )
+                        uniform token[] xformOpOrder = ["xformOp:transform"]
+                    }
+                }
+            }
+        }
+
+        over "joints"
+        {
+            over "joint1" (
+                prepend apiSchemas = ["PhysicsDriveAPI:angular"]
+            )
+            {
+                float drive:angular:physics:damping = 85
+                float physxJoint:maxJointVelocity = 687.5494
+            }
+
+            over "joint2" (
+                prepend apiSchemas = ["PhysicsDriveAPI:angular"]
+            )
+            {
+                float drive:angular:physics:damping = 105
+                float physxJoint:maxJointVelocity = 687.5494
+            }
+
+            over "joint3" (
+                prepend apiSchemas = ["PhysicsDriveAPI:angular"]
+            )
+            {
+                float drive:angular:physics:damping = 85
+                float physxJoint:maxJointVelocity = 687.5494
+            }
+
+            over "joint4" (
+                prepend apiSchemas = ["PhysicsDriveAPI:angular"]
+            )
+            {
+                float drive:angular:physics:damping = 30
+                float physxJoint:maxJointVelocity = 572.9578
+            }
+
+            over "joint5" (
+                prepend apiSchemas = ["PhysicsDriveAPI:angular"]
+            )
+            {
+                float drive:angular:physics:damping = 23
+                float physxJoint:maxJointVelocity = 572.9578
+            }
+
+            over "joint6" (
+                prepend apiSchemas = ["PhysicsDriveAPI:angular"]
+            )
+            {
+                float drive:angular:physics:damping = 18
+                float physxJoint:maxJointVelocity = 572.9578
+            }
+
+            over "joint_left" (
+                prepend apiSchemas = ["PhysicsDriveAPI:linear"]
+            )
+            {
+                float drive:linear:physics:damping = 30
+                float drive:linear:physics:maxForce = 12
+                float drive:linear:physics:stiffness = 1200
+                uniform token drive:linear:physics:type = "force"
+                float physics:upperLimit = 0.05
+                float physxJoint:maxJointVelocity = 0.08
+                custom float urdf:limit:effort = 12
+            }
+
+            over "joint_right" (
+                prepend apiSchemas = ["PhysicsDriveAPI:linear"]
+            )
+            {
+                float drive:linear:physics:damping = 30
+                float drive:linear:physics:maxForce = 12
+                float drive:linear:physics:stiffness = 1200
+                uniform token drive:linear:physics:type = "force"
+                float physics:upperLimit = 0.05
+                float physxJoint:maxJointVelocity = 0.08
+                custom float urdf:limit:effort = 12
+            }
+        }
+    }
+
+    def "Objects"
+    {
+        def Xform "PenRed" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            prepend references = @../assets/stationery/stationery_models.usd@</Stationery/PenRed>
+        )
+        {
+            point3f physics:centerOfMass = (0, 0, 0)
+            bool physics:kinematicEnabled = 0
+            float physics:mass = 0.012
+            float physxRigidBody:maxContactImpulse = 0.05
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            quatd xformOp:orient = (0.9876883405951378, 0, 0, 0.15643446504023087)
+            double3 xformOp:translate = (0.07, 0.02, 0.075)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+
+            over "Mesh" (
+                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI", "PhysicsFilteredPairsAPI", "PhysicsMeshCollisionAPI", "PhysxCollisionAPI"]
+            )
+            {
+                rel material:binding = </World/Looks/StationeryPBR> (
+                    bindMaterialAs = "strongerThanDescendants"
+                )
+                rel material:binding:physics = </World/Looks/StationeryPhysics> (
+                    bindMaterialAs = "weakerThanDescendants"
+                )
+                uniform token physics:approximation = "convexHull"
+                rel physics:filteredPairs
+                float physxCollision:contactOffset = 0.002
+                float physxCollision:minTorsionalPatchRadius = 0.002
+                float physxCollision:restOffset = 0
+                float physxCollision:torsionalPatchRadius = 0.002
+            }
+        }
+
+        def Xform "PenBlue" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            prepend references = @../assets/stationery/stationery_models.usd@</Stationery/PenBlue>
+        )
+        {
+            point3f physics:centerOfMass = (0, 0, 0)
+            bool physics:kinematicEnabled = 0
+            float physics:mass = 0.012
+            float physxRigidBody:maxContactImpulse = 0.05
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            quatd xformOp:orient = (0.9612616959383189, 0, 0, -0.27563735581699916)
+            double3 xformOp:translate = (0.15, 0.18, 0.095)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+
+            over "Mesh" (
+                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI", "PhysicsFilteredPairsAPI", "PhysicsMeshCollisionAPI", "PhysxCollisionAPI"]
+            )
+            {
+                rel material:binding = </World/Looks/StationeryPBR> (
+                    bindMaterialAs = "strongerThanDescendants"
+                )
+                rel material:binding:physics = </World/Looks/StationeryPhysics> (
+                    bindMaterialAs = "weakerThanDescendants"
+                )
+                uniform token physics:approximation = "convexHull"
+                rel physics:filteredPairs
+                float physxCollision:contactOffset = 0.002
+                float physxCollision:minTorsionalPatchRadius = 0.002
+                float physxCollision:restOffset = 0
+                float physxCollision:torsionalPatchRadius = 0.002
+            }
+        }
+
+        def Xform "Eraser" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            prepend references = @../assets/stationery/stationery_models.usd@</Stationery/Eraser>
+        )
+        {
+            point3f physics:centerOfMass = (0, 0, 0)
+            bool physics:kinematicEnabled = 0
+            float physics:mass = 0.025
+            float physxRigidBody:maxContactImpulse = 0.05
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            quatd xformOp:orient = (0.9702957262759965, 0, 0, 0.24192189559966773)
+            double3 xformOp:translate = (0.115, 0.095, 0.055)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+
+            over "Mesh" (
+                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI", "PhysicsFilteredPairsAPI", "PhysicsMeshCollisionAPI", "PhysxCollisionAPI"]
+            )
+            {
+                rel material:binding = </World/Looks/StationeryPBR> (
+                    bindMaterialAs = "strongerThanDescendants"
+                )
+                rel material:binding:physics = </World/Looks/StationeryPhysics> (
+                    bindMaterialAs = "weakerThanDescendants"
+                )
+                uniform token physics:approximation = "convexHull"
+                rel physics:filteredPairs
+                float physxCollision:contactOffset = 0.002
+                float physxCollision:minTorsionalPatchRadius = 0.002
+                float physxCollision:restOffset = 0
+                float physxCollision:torsionalPatchRadius = 0.002
+            }
+        }
+    }
+
+    def PhysicsFixedJoint "GraspAssistJoint" (
+        active = false
+        customData = {
+            string purpose = "reliable_demo_grasp_assist"
+        }
+    )
+    {
+        rel physics:body0 = </World/Robot/link6>
+        rel physics:body1 = </World/Objects/PenRed>
+        bool physics:jointEnabled = 0
+        point3f physics:localPos0 = (0, 0, 0.09121)
+        point3f physics:localPos1 = (0, 0, 0)
+        quatf physics:localRot0 = (0, -0.7071068, 0, -0.7071068)
+        quatf physics:localRot1 = (1, 0, 0, 0)
+    }
+
+    def PhysicsCollisionGroup "GripperFingerNoCollideGroup"
+    {
+        rel collection:colliders:includes = [
+            </World/Robot/gripper_left>,
+            </World/Robot/gripper_right>,
+        ]
+        prepend rel physics:filteredGroups = </World/GripperFingerNoCollideGroup>
+    }
+
+    def Scope "Cameras"
+    {
+        def Xform "SideModel"
+        {
+            def Cube "Body"
+            {
+                rel material:binding = </World/Looks/FixedCamera>
+                double size = 1
+                quatd xformOp:orient = (0.40091709087871574, -0.5769706062561304, -0.7115970810492276, 0)
+                double3 xformOp:scale = (0.05, 0.04, 0.04)
+                double3 xformOp:translate = (0.3842645715806021, -0.06156586884913685, 0.6169632743120673)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+            }
+
+            def Cylinder "Lens"
+            {
+                uniform token axis = "Z"
+                double height = 0.014
+                rel material:binding = </World/Looks/FixedCameraLens>
+                double radius = 0.011
+                quatd xformOp:orient = (0.40091709087871574, -0.5769706062561304, -0.7115970810492276, 0)
+                double3 xformOp:translate = (0.3711411657264482, -0.05092526950793095, 0.6013570619449654)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+        }
+
+        def Camera "Side"
+        {
+            float2 clippingRange = (0.01, 100)
+            float focalLength = 9.5
+            float focusDistance = 0.64845973
+            float horizontalAperture = 20.955
+            float verticalAperture = 15.71625
+            matrix4d xformOp:transform = ( (0.6298019584212192, 0.7767557487195038, 0, 0), (-0.5270528335601686, 0.4273401353190556, 0.7345717932113162, -0), (0.5705828632240845, -0.4626347539654738, 0.6785309724826948, 0), (0.37, -0.04999999999999995, 0.6, 1) )
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+
+        def Xform "ExternalMount" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+            prepend references = @../assets/camera/data_collection_camera_mount.usd@
+        )
+        {
+            rel material:binding = </World/Looks/ExternalCameraMount> (
+                bindMaterialAs = "strongerThanDescendants"
+            )
+            quatd xformOp:orient = (6.123233995736766e-17, 4.329780281177466e-17, 0.7071067811865476, 0.7071067811865475)
+            double3 xformOp:scale = (1, 1, 1)
+            double3 xformOp:translate = (0, -0.022780342815431287, 0.015)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+
+            over "tn__0001_ASM_"
+            {
+                over "tn__1_bmf0zaj0"
+                {
+                    over "Mesh"
+                    {
+                        custom quatf xformOp:orient = (1, 0, 0, 0)
+                        custom float3 xformOp:scale = (1, 1, 1)
+                        double3 xformOp:translate = (0.06020525070086105, -0.012551881792145479, 0.6347620242140731)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                    }
+                }
+
+                over "tn__taKka7" (
+                    active = false
+                )
+                {
+                    over "Mesh" (
+                        active = false
+                    )
+                    {
+                    }
+                }
+
+                over "tn__2_bmf0zaj0" (
+                    active = false
+                )
+                {
+                }
+            }
+        }
+
+        def Camera "External"
+        {
+            float2 clippingRange = (0.01, 100)
+            float focalLength = 16
+            float focusDistance = 0.49999988
+            float horizontalAperture = 20.955
+            float verticalAperture = 15.71625
+            matrix4d xformOp:transform = ( (1, 0, 0, 0), (0, 1, 0, 0), (0, -0.23, 1, 0), (0, 0.06, 0.65, 1) )
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+    }
+}
+

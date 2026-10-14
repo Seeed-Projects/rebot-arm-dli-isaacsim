@@ -18,9 +18,20 @@ import numpy as np
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_SCENE = PROJECT_ROOT / "scenes" / "rebot_stationery_sorting.usda"
-DEFAULT_GRASP_CONFIG = PROJECT_ROOT / "config" / "grasp_config.json"
-DEFAULT_DR_CONFIG = PROJECT_ROOT / "config" / "domain_randomization.json"
+VARIANT_DEFAULTS = {
+    "vials": {
+        "scene": PROJECT_ROOT / "scenes" / "rebot_stationery_sorting.usda",
+        "grasp_config": PROJECT_ROOT / "config" / "grasp_config.json",
+        "dr_config": PROJECT_ROOT / "config" / "domain_randomization.json",
+    },
+    "stationery": {
+        "scene": PROJECT_ROOT / "scenes" / "rebot_stationery_pencil_cup.usda",
+        "grasp_config": PROJECT_ROOT / "config" / "grasp_config_stationery.json",
+        "dr_config": PROJECT_ROOT
+        / "config"
+        / "domain_randomization_stationery.json",
+    },
+}
 
 
 def _parse_args() -> argparse.Namespace:
@@ -30,9 +41,15 @@ def _parse_args() -> argparse.Namespace:
         type=Path,
         default=PROJECT_ROOT / "media" / "camera_previews",
     )
-    parser.add_argument("--scene", type=Path, default=DEFAULT_SCENE)
-    parser.add_argument("--grasp-config", type=Path, default=DEFAULT_GRASP_CONFIG)
-    parser.add_argument("--dr-config", type=Path, default=DEFAULT_DR_CONFIG)
+    parser.add_argument(
+        "--variant",
+        choices=sorted(VARIANT_DEFAULTS),
+        default="vials",
+        help="Task scene to load (see build_scene.py)",
+    )
+    parser.add_argument("--scene", type=Path, default=None)
+    parser.add_argument("--grasp-config", type=Path, default=None)
+    parser.add_argument("--dr-config", type=Path, default=None)
     parser.add_argument(
         "--rounds",
         type=int,
@@ -53,7 +70,18 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument("--rebuild", action="store_true")
-    return parser.parse_args()
+    # parse_known_args: kit-level settings flags such as
+    # --/rtx/modes/rt/enabled=true must survive argparse untouched.
+    args, _ = parser.parse_known_args()
+    # Unspecified scene/config paths follow the selected task variant.
+    defaults = VARIANT_DEFAULTS[args.variant]
+    if args.scene is None:
+        args.scene = defaults["scene"]
+    if args.grasp_config is None:
+        args.grasp_config = defaults["grasp_config"]
+    if args.dr_config is None:
+        args.dr_config = defaults["dr_config"]
+    return args
 
 
 ARGS = _parse_args()
@@ -131,7 +159,10 @@ def main() -> int:
         dr_config["external_camera"]["mount_prim_path"],
         "/World/Looks/StationeryPhysics",
         "/World/Environment/Table/Top",
-        grasp_config["vial_rack_prim_path"],
+        grasp_config.get(
+            "receptacle_prim_path",
+            grasp_config.get("vial_rack_prim_path"),
+        ),
         grasp_config["workspace_prim_path"],
         *grasp_config["target_prim_paths"].values(),
     ]
@@ -145,7 +176,7 @@ def main() -> int:
             print("[scene] Stale scene detected; rebuilding")
             needs_rebuild = True
     if needs_rebuild:
-        build_scene(ARGS.scene)
+        build_scene(ARGS.scene, variant=ARGS.variant)
         if not open_stage(str(ARGS.scene)):
             raise RuntimeError(f"Unable to reopen scene: {ARGS.scene}")
         _wait_for_stage()
@@ -273,7 +304,11 @@ def main() -> int:
             if frame is None:
                 print(f"[capture-warn] {name}: camera produced no image")
                 continue
-            output_path = ARGS.output_dir / f"preview_{name}_seed{seed}.png"
+            prefix = "" if ARGS.variant == "vials" else f"{ARGS.variant}_"
+            output_path = (
+                ARGS.output_dir
+                / f"preview_{prefix}{name}_seed{seed}.png"
+            )
             Image.fromarray(frame).save(output_path)
             written += 1
             print(

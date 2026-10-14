@@ -28,12 +28,25 @@ last target whenever leader data is unavailable.
 
 ## Task
 
-The workspace contains:
+The default scene is the **vial variant**: three opaque vials (SO-101
+workshop assets, Ø34 × 116 mm) and one fixed vial rack with four Ø32 slots,
+centred in front of the robot (slot centres at `(-0.190, 0.090)`,
+`(-0.190, 0.150)`, `(-0.130, 0.090)` and `(-0.130, 0.150) m`).
 
-- three opaque vials (SO-101 workshop assets, Ø34 × 116 mm);
-- one fixed vial rack with four Ø32 slots, centred in front of the robot
-  (slot centres at `(-0.190, 0.090)`, `(-0.190, 0.150)`, `(-0.130, 0.090)`
-  and `(-0.130, 0.150) m`).
+A second, optional **stationery variant** keeps the original task: two pens
+and one eraser (Poly Haven stationery set) placed into a fixed pencil cup.
+Both variants share the same robot, workspace, and camera rig; select one at
+launch:
+
+```bash
+./run.sh --variant vials        # default: three vials into the vial rack
+./run.sh --variant stationery   # two pens + eraser into the pencil cup
+```
+
+The stationery variant writes its dataset to
+`datasets/rebot_stationery_pencil_cup` with the task text
+`Put the two pens and the eraser into the pencil cup`, and builds its scene
+on first launch (`scenes/rebot_stationery_pencil_cup.usda`).
 
 Press `R` to reset the objects. They are spawned above separate areas of the
 workspace and fall onto the work surface under gravity. Use the leader arm to
