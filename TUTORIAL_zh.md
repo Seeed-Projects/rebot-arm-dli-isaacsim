@@ -226,7 +226,7 @@ ISAACSIM_ROOT=/path/to/isaacsim ./run.sh --leader-port /dev/ttyUSB0
 
 无主臂时同样可以先跑回归验证：`./run.sh --variant stationery --test`。想重新生成上面的截图，运行 `"$ISAACSIM_ROOT/python.sh" scripts/capture_camera_previews.py --variant stationery`。
 
-> 上方截图拍摄于 8GB 笔记本 GPU，画面噪点是第 10 节所述的已知渲染限制；在建议的 ≥12GB RTX 40 系显卡上加载同一场景，相机画面是干净的。
+> 上方截图由 `scripts/capture_camera_previews.py` 以 Path Tracing 模式渲染生成（headless 截图只有少量帧，收敛时间可忽略）。实时 GUI 视口在 8GB 显卡上仍可能出现噪点，属第 10 节所述已知限制。
 
 ## 7. 数据集检查、可视化与回放
 

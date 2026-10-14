@@ -1156,12 +1156,9 @@ def _stationery_material(stage: Usd.Stage) -> UsdShade.Material:
         "../assets/stationery/textures/stationery_supplies_nor_gl_4k.exr",
         "raw",
     )
-    normal.CreateInput("scale", Sdf.ValueTypeNames.Float4).Set(
-        Gf.Vec4f(2.0, 2.0, 2.0, 1.0)
-    )
-    normal.CreateInput("bias", Sdf.ValueTypeNames.Float4).Set(
-        Gf.Vec4f(-1.0, -1.0, -1.0, 0.0)
-    )
+    # UsdPreviewSurface remaps the normal input to [-1, 1] itself; adding a
+    # manual scale/bias double-transforms it, which scatters per-pixel
+    # micro-normals and turns 1-sample RT renders into full-frame fireflies.
     shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).ConnectToSource(
         diffuse.ConnectableAPI(), "rgb"
     )
@@ -1314,7 +1311,9 @@ def _add_gripper_collision_filter(stage: Usd.Stage) -> None:
 
 
 def build_scene(
-    output: Path = DEFAULT_OUTPUT, variant: str = "vials"
+    output: Path = DEFAULT_OUTPUT,
+    variant: str = "vials",
+    render_mode: str | None = None,
 ) -> Path:
     if variant not in TARGET_SPECS_BY_VARIANT:
         raise ValueError(
@@ -1341,6 +1340,14 @@ def build_scene(
     stage.SetTimeCodesPerSecond(120.0)
     stage.SetStartTimeCode(0.0)
     stage.SetEndTimeCode(1200.0)
+    if render_mode is not None:
+        # Isaac reads the requested renderer from the layer's custom data
+        # (the GUI writes the same key when a mode is picked in the
+        # viewport). Used by the still-capture flow, which needs the
+        # accumulated Path Tracing result rather than 1-sample Real-Time.
+        layer_data = dict(stage.GetRootLayer().customLayerData)
+        layer_data["renderSettings"] = {"rtx:rendermode": render_mode}
+        stage.GetRootLayer().customLayerData = layer_data
 
     world = UsdGeom.Xform.Define(stage, "/World")
     stage.SetDefaultPrim(world.GetPrim())

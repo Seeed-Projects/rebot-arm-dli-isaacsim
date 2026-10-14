@@ -69,6 +69,16 @@ def _parse_args() -> argparse.Namespace:
             "where DLSS Ray Reconstruction fails and images look noisy"
         ),
     )
+    parser.add_argument(
+        "--realtime-renderer",
+        action="store_true",
+        help=(
+            "Keep the default RTX Real-Time 2.0 renderer instead of Path "
+            "Tracing. Path Tracing is the default here because stills need "
+            "accumulation to be noise-free on GPUs where DLSS Ray "
+            "Reconstruction is unavailable"
+        ),
+    )
     parser.add_argument("--rebuild", action="store_true")
     # parse_known_args: kit-level settings flags such as
     # --/rtx/modes/rt/enabled=true must survive argparse untouched.
@@ -116,6 +126,13 @@ if ARGS.classic_renderer:
     _settings = carb.settings.get_settings()
     _settings.set_bool("/rtx/modes/rt2/enabled", False)
     _settings.set_bool("/rtx/modes/rt/enabled", True)
+elif not ARGS.realtime_renderer:
+    # Stills are a handful of frames, so convergence cost does not matter;
+    # Real-Time 2.0 renders one sample per pixel and its denoising is
+    # unavailable on some GPUs, which shows up as full-frame speckle.
+    # This is a per-run setting: nothing is written into the scene file, so
+    # GUI sessions keep their own (safer) renderer choice.
+    carb.settings.get_settings().set_string("/rtx/rendermode", "PathTracing")
 
 
 def _wait_for_stage() -> None:
@@ -176,7 +193,11 @@ def main() -> int:
             print("[scene] Stale scene detected; rebuilding")
             needs_rebuild = True
     if needs_rebuild:
-        build_scene(ARGS.scene, variant=ARGS.variant)
+        build_scene(
+            ARGS.scene,
+            variant=ARGS.variant,
+            render_mode=None if ARGS.realtime_renderer else "PathTracing",
+        )
         if not open_stage(str(ARGS.scene)):
             raise RuntimeError(f"Unable to reopen scene: {ARGS.scene}")
         _wait_for_stage()

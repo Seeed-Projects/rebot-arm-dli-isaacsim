@@ -1,5 +1,10 @@
 #usda 1.0
 (
+    customLayerData = {
+        dictionary renderSettings = {
+            string "rtx:rendermode" = "PathTracing"
+        }
+    }
     defaultPrim = "World"
     endTimeCode = 1200
     metersPerUnit = 1
@@ -98,9 +103,7 @@ def Xform "World"
             def Shader "NormalTexture"
             {
                 uniform token info:id = "UsdUVTexture"
-                float4 inputs:bias = (-1, -1, -1, 0)
                 asset inputs:file = @../assets/stationery/textures/stationery_supplies_nor_gl_4k.exr@
-                float4 inputs:scale = (2, 2, 2, 1)
                 token inputs:sourceColorSpace = "raw"
                 float2 inputs:st.connect = </World/Looks/StationeryPBR/PrimvarReader.outputs:result>
                 normal3f outputs:rgb
