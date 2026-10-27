@@ -54,10 +54,11 @@ over "tn__00armrs_asmv3_hJ6D"
         {
             bool newton:selfCollisionEnabled = 1
             vector3f physics:angularVelocity = (0, 0, 0)
-            point3f physics:centerOfMass = (0.0000028764189, -0.00012230249, 0.024337612)
-            float3 physics:diagonalInertia = (0.0007568764, 0.0011961596, 0.0017981218)
-            float physics:mass = 0.57955855
-            quatf physics:principalAxes = (0.00028090648, 0.70710254, 0.70711094, 0.00025757455)
+            point3f physics:centerOfMass = (2.876419e-06, -0.0001223025, 0.02433761)
+            float3 physics:diagonalInertia = (0.0013304, 0.00213119, 0.00275877)
+            float physics:mass = 1.1774
+            quatf physics:principalAxes = (1, 0, 0, -6.243835e-06)
+            double[] newton:inertia = [0.0013304, 0.00213119, 0.00275877, 1e-08, 0, 0]
             rel physics:simulationOwner
             vector3f physics:velocity = (0, 0, 0)
 
@@ -66,10 +67,11 @@ over "tn__00armrs_asmv3_hJ6D"
             )
             {
                 vector3f physics:angularVelocity = (0, 0, 0)
-                point3f physics:centerOfMass = (0.008176523, 0.0012258422, 0.033141967)
-                float3 physics:diagonalInertia = (0.00006613533, 0.00010017448, 0.00012440623)
-                float physics:mass = 0.15329085
-                quatf physics:principalAxes = (0.27709222, 0.2732803, 0.6600784, 0.6425218)
+                point3f physics:centerOfMass = (0.008176523, 0.001225842, 0.03314197)
+                float3 physics:diagonalInertia = (0.00015464, 0.0002134129, 0.0002728171)
+                float physics:mass = 0.4655
+                quatf physics:principalAxes = (0.3197748, 0.6306695, 0.6306695, 0.3197748)
+                double[] newton:inertia = [0.00025207, 0.00015464, 0.00023416, 0, -2.832e-05, 0]
                 rel physics:simulationOwner
                 vector3f physics:velocity = (0, 0, 0)
 
@@ -78,10 +80,11 @@ over "tn__00armrs_asmv3_hJ6D"
                 )
                 {
                     vector3f physics:angularVelocity = (0, 0, 0)
-                    point3f physics:centerOfMass = (-0.11786481, -0.0034222642, -0.027155194)
-                    float3 physics:diagonalInertia = (0.00033839646, 0.0013591199, 0.0014575688)
-                    float physics:mass = 0.75332206
-                    quatf physics:principalAxes = (0.99999756, 0.0019328721, 0.000031401203, -0.0010757166)
+                    point3f physics:centerOfMass = (-0.1178648, -0.003422264, -0.02715519)
+                    float3 physics:diagonalInertia = (0.000577462, 0.009884842, 0.01008476)
+                    float physics:mass = 1.552
+                    quatf physics:principalAxes = (0.9999968, -0.002518935, 0.000352186, 1.910539e-05)
+                    double[] newton:inertia = [0.000577466775, 0.00988484698, 0.0100847496, -3.3841785e-07, 6.69752535e-06, 1.00738337e-06]
                     rel physics:simulationOwner
                     vector3f physics:velocity = (0, 0, 0)
 
@@ -90,10 +93,11 @@ over "tn__00armrs_asmv3_hJ6D"
                     )
                     {
                         vector3f physics:angularVelocity = (0, 0, 0)
-                        point3f physics:centerOfMass = (0.10342716, -0.06641379, -0.027106868)
-                        float3 physics:diagonalInertia = (0.00024830567, 0.0007392625, 0.00083259656)
-                        float physics:mass = 0.51993835
-                        quatf physics:principalAxes = (0.9989551, -0.005314622, -0.000505122, -0.04539028)
+                        point3f physics:centerOfMass = (0.1034272, -0.06641379, -0.02710687)
+                        float3 physics:diagonalInertia = (0.0005512153, 0.00745913, 0.007642284)
+                        float physics:mass = 1.252
+                        quatf physics:principalAxes = (0.9999889, -0.0009913049, -0.003544135, 0.002945472)
+                        double[] newton:inertia = [0.000551811337, 0.00745889021, 0.00764192742, -4.07430508e-05, -5.02214689e-05, 7.07344633e-08]
                         rel physics:simulationOwner
                         vector3f physics:velocity = (0, 0, 0)
 
@@ -102,10 +106,11 @@ over "tn__00armrs_asmv3_hJ6D"
                         )
                         {
                             vector3f physics:angularVelocity = (0, 0, 0)
-                            point3f physics:centerOfMass = (0.047554456, -0.04411135, -0.031411193)
-                            float3 physics:diagonalInertia = (0.00007030194, 0.00010300118, 0.00011252297)
-                            float physics:mass = 0.16356754
-                            quatf physics:principalAxes = (0.9681626, 0.009161939, 0.002493274, -0.2501421)
+                            point3f physics:centerOfMass = (0.04755446, -0.04411135, -0.03141119)
+                            float3 physics:diagonalInertia = (0.000225289, 0.0004651715, 0.0006197449)
+                            float physics:mass = 0.46
+                            quatf physics:principalAxes = (0.6839188, 0.6839188, -0.179597, -0.179597)
+                            double[] newton:inertia = [0.000320508485, 0.000524525455, 0.000465171515, 0.000168799091, -0, -0]
                             rel physics:simulationOwner
                             vector3f physics:velocity = (0, 0, 0)
 
@@ -114,10 +119,11 @@ over "tn__00armrs_asmv3_hJ6D"
                             )
                             {
                                 vector3f physics:angularVelocity = (0, 0, 0)
-                                point3f physics:centerOfMass = (-0.011440062, 0.000004790774, 0.04804875)
-                                float3 physics:diagonalInertia = (0.00005295596, 0.000055153945, 0.00007345979)
-                                float physics:mass = 0.15012045
-                                quatf physics:principalAxes = (0.7217615, 0.0017204558, 0.6921357, -0.0023510843)
+                                point3f physics:centerOfMass = (-0.01144006, 4.790774e-06, 0.04804875)
+                                float3 physics:diagonalInertia = (7.097621e-05, 7.392214e-05, 9.845724e-05)
+                                float physics:mass = 0.2012046
+                                quatf physics:principalAxes = (0.7217615, -0.001720456, -0.6921357, 0.002351084)
+                                double[] newton:inertia = [9.84090046e-05, 7.39220615e-05, 7.10245279e-05, 1.81878283e-08, -1.15016294e-06, -1.77912637e-08]
                                 rel physics:simulationOwner
                                 vector3f physics:velocity = (0, 0, 0)
 
@@ -126,10 +132,11 @@ over "tn__00armrs_asmv3_hJ6D"
                                 )
                                 {
                                     vector3f physics:angularVelocity = (0, 0, 0)
-                                    point3f physics:centerOfMass = (0.000018019602, 2.483346e-8, 0.004348058)
-                                    float3 physics:diagonalInertia = (0.000004371855, 0.000004422738, 0.000008542994)
-                                    float physics:mass = 0.018299032
-                                    quatf physics:principalAxes = (0.000013218725, 0.7070848, 0.70712876, -0.000012841821)
+                                    point3f physics:centerOfMass = (1.80196e-05, 2.483346e-08, 0.004348058)
+                                    float3 physics:diagonalInertia = (1.457285e-05, 1.474246e-05, 2.847665e-05)
+                                    float physics:mass = 0.1
+                                    quatf physics:principalAxes = (-1.321873e-05, 0.7070848, 0.7071288, -1.284182e-05)
+                                    double[] newton:inertia = [1.47424612e-05, 1.45728507e-05, 2.8476646e-05, 1.05586155e-11, 5.06176061e-10, -7.39546725e-12]
                                     rel physics:simulationOwner
                                     vector3f physics:velocity = (0, 0, 0)
 
@@ -138,10 +145,11 @@ over "tn__00armrs_asmv3_hJ6D"
                                     )
                                     {
                                         vector3f physics:angularVelocity = (0, 0, 0)
-                                        point3f physics:centerOfMass = (-0.11275169, 0.00012844308, -0.0000057260245)
-                                        float3 physics:diagonalInertia = (0.00004541016, 0.00019639342, 0.0002112218)
-                                        float physics:mass = 0.12557925
-                                        quatf physics:principalAxes = (-0.4998073, 0.5002209, 0.5002365, 0.49973503)
+                                        point3f physics:centerOfMass = (-0.1127517, 0.0001284431, -5.726024e-06)
+                                        float3 physics:diagonalInertia = (0.0001582589, 0.000373537, 0.0004535741)
+                                        float physics:mass = 0.65
+                                        quatf physics:principalAxes = (0.001964698, 0.7072943, 0.7068878, -0.006368091)
+                                        double[] newton:inertia = [0.00037354, 0.0001583, 0.00045353, -1.1e-07, 5e-07, 3.48e-06]
                                         rel physics:simulationOwner
                                         vector3f physics:velocity = (0, 0, 0)
 
@@ -150,10 +158,11 @@ over "tn__00armrs_asmv3_hJ6D"
                                         )
                                         {
                                             vector3f physics:angularVelocity = (0, 0, 0)
-                                            point3f physics:centerOfMass = (-0.0021800871, 0.018709036, 0.009321886)
-                                            float3 physics:diagonalInertia = (0.000008314203, 0.000010480155, 0.000011002699)
-                                            float physics:mass = 0.040144015
-                                            quatf physics:principalAxes = (0.66413367, -0.2028943, 0.6493057, 0.31010073)
+                                            point3f physics:centerOfMass = (-0.002180087, 0.01870904, 0.009321886)
+                                            float3 physics:diagonalInertia = (9.3078e-06, 9.50146e-06, 1.09878e-05)
+                                            float physics:mass = 0.0752
+                                            quatf physics:principalAxes = (-0.7071068, 0, 0.7071068, 0)
+                                            double[] newton:inertia = [1.09877964176e-05, 9.5014603672e-06, 9.30779991911e-06, 0, 0, 0]
                                             rel physics:simulationOwner
                                             vector3f physics:velocity = (0, 0, 0)
                                         }
@@ -163,10 +172,11 @@ over "tn__00armrs_asmv3_hJ6D"
                                         )
                                         {
                                             vector3f physics:angularVelocity = (0, 0, 0)
-                                            point3f physics:centerOfMass = (0.0021800871, -0.018709036, 0.009321886)
-                                            float3 physics:diagonalInertia = (0.000008314203, 0.000010480155, 0.000011002699)
-                                            float physics:mass = 0.040144015
-                                            quatf physics:principalAxes = (0.6493057, 0.31010073, 0.66413367, -0.2028943)
+                                            point3f physics:centerOfMass = (0.002180087, -0.01870904, 0.009321886)
+                                            float3 physics:diagonalInertia = (9.3078e-06, 9.50146e-06, 1.09878e-05)
+                                            float physics:mass = 0.0752
+                                            quatf physics:principalAxes = (-0.7071068, 0, 0.7071068, 0)
+                                            double[] newton:inertia = [1.09877964176e-05, 9.5014603672e-06, 9.30779991911e-06, 0, 0, 0]
                                             rel physics:simulationOwner
                                             vector3f physics:velocity = (0, 0, 0)
                                         }
