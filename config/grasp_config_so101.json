@@ -1,0 +1,33 @@
+{
+  "physics_dt": 0.008333333333333333,
+  "rendering_dt": 0.008333333333333333,
+  "robot_prim_path": "/World/Robot/base",
+  "arm_joint_names": [
+    "Rotation",
+    "Pitch",
+    "Elbow",
+    "Wrist_Pitch",
+    "Wrist_Roll"
+  ],
+  "gripper_joint_names": [
+    "Jaw"
+  ],
+  "target_prim_paths": {
+    "vial_1": "/World/Objects/Vial1",
+    "vial_2": "/World/Objects/Vial2",
+    "vial_3": "/World/Objects/Vial3"
+  },
+  "workspace_prim_path": "/World/WorkspaceBox",
+  "vial_rack_prim_path": "/World/Environment/VialRack",
+  "vial_rack": {
+    "center_xy_m": [
+      0.16,
+      0.22
+    ],
+    "success_radius_m": 0.055,
+    "success_min_z_m": 0.005,
+    "success_max_z_m": 0.12,
+    "success_max_speed_mps": 0.25,
+    "success_settle_time_s": 0.35
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "udp": {
+    "host": "127.0.0.1",
+    "port": 5015,
+    "send_hz": 60.0,
+    "watchdog_timeout_s": 0.5
+  },
+  "leader": {
+    "default_port": "/dev/ttyUSB0",
+    "id": "so101_leader",
+    "python": "../rebot_lerobot/.venv/bin/python"
+  },
+  "follower": {
+    "enabled": true,
+    "default_port": "/dev/ttyUSB1",
+    "id": "so101_follower",
+    "sim_source": "follower"
+  },
+  "command_filter": {
+    "mode": "drive",
+    "alpha": 0.5,
+    "fast_alpha": 0.9,
+    "fast_threshold_deg": 1.0,
+    "deadband_deg": 0.05,
+    "max_arm_step_deg": 20.0,
+    "jaw_alpha": 0.6,
+    "max_jaw_step_deg": 25.0
+  }
+}

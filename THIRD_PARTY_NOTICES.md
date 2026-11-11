@@ -41,6 +41,23 @@ reBot-Isaacsim URDF and the MuJoCo Menagerie MJCF of the same robot. It is a
 Newton/MuJoCo-stack asset and is not used by the PhysX teleoperation pipeline;
 see `assets/newton_rebot_devarm/PORTING_NOTES.md`.
 
+## SO-ARM101 robot asset
+
+`assets/so101/SO-ARM101-USD-NO-CAMERA.usd` is a verbatim copy of the SO-101
+follower articulation from NVIDIA's
+[Sim-to-Real SO-101 Workshop](https://github.com/isaac-sim/Sim-to-Real-SO-101-Workshop)
+(`source/sim_to_real_so101/assets/usd/SO-ARM101-USD-NO-CAMERA.usd`), ported
+on 2026-11-06. The upstream repository is released under the Apache License,
+Version 2.0:
+
+<https://github.com/isaac-sim/Sim-to-Real-SO-101-Workshop/blob/main/LICENSE>
+
+The joint-range mapping used by `scripts/so101_protocol.py` follows the
+workshop's `lerobot_interface.py`. The white colour is a scene-level material
+opinion authored in `scenes/so101_vials_sorting.usda`; the copied USD itself
+is byte-identical to upstream. See `assets/so101/README.md` for the verified
+asset facts.
+
 ## Stationery Supplies
 
 Files under `assets/stationery/` are derived from Poly Haven's Stationery

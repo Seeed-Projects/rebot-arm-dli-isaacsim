@@ -166,7 +166,21 @@ if not (ARGS.headless or ARGS.test):
 
     _settings = carb.settings.get_settings()
     _settings.set_bool("/app/runLoops/main/rateLimitEnabled", True)
-    _settings.set_int("/app/runLoops/main/rateLimitFrequency", 60)
+    _settings.set_int("/app/runLoops/main/rateLimitFrequency", 30)
+    # Real-Time (not Path Tracing) on 8 GB laptop GPUs: the desktop
+    # compositor already takes ~2.8 GB, so the renderer gets minimal
+    # resources to avoid starving it.
+    _settings.set_string("/rtx/rendermode", "RealTimePathTracing")
+    _settings.set_int("/rtx/directLighting/sampledLighting/samplesPerPixel", 1)
+    _settings.set_int("/rtx/reflections/sampledLighting/samplesPerPixel", 1)
+    _settings.set_int("/rtx/ambientOcclusion/enabled", 0)
+    _settings.set_bool("/rtx/post/aa/op", False)
+    _settings.set_int("/rtx/post/bloom/enabled", 0)
+    _settings.set_int("/rtx/post/dof/enabled", 0)
+    _settings.set_int("/rtx/post/motionBlur/enabled", 0)
+    _settings.set_int("/rtx/post/chromaticAberration/enabled", 0)
+    _settings.set_int("/app/renderer/resolution/width", 640)
+    _settings.set_int("/app/renderer/resolution/height", 360)
 
 from isaacsim.core.api import World
 from isaacsim.core.prims import SingleArticulation, SingleRigidPrim
@@ -542,7 +556,7 @@ class LeaderTeleop:
             build_scene(
                 self.scene_path,
                 variant=ARGS.variant,
-                render_mode="PathTracing",
+                render_mode="RealTimePathTracing",
             )
         if not open_stage(str(self.scene_path)):
             raise RuntimeError(f"Unable to open scene: {self.scene_path}")
@@ -591,7 +605,7 @@ class LeaderTeleop:
             build_scene(
                 self.scene_path,
                 variant=ARGS.variant,
-                render_mode="PathTracing",
+                render_mode="RealTimePathTracing",
             )
             if not open_stage(str(self.scene_path)):
                 raise RuntimeError(f"Unable to reopen scene: {self.scene_path}")

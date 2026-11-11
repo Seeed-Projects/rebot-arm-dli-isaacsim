@@ -228,6 +228,79 @@ ISAACSIM_ROOT=/path/to/isaacsim ./run.sh --leader-port /dev/ttyUSB0
 
 > 两个任务场景文件都保存了 `Path Tracing` 渲染模式，因此 GUI 视口与截图同样干净（headless 截图也是用它渲染的）。显存较小的机器上如遇卡顿，见第 10 节的缓解措施。
 
+### 机械臂变体：白色 SO-ARM101 与真机联动遥操作
+
+如果想把课程里的 reBot 换成 **NVIDIA Sim-to-Real SO-101 Workshop 的 SO-ARM101**（并改成白色），工程提供了一套完全独立的启动入口 `run_so101.sh`：围栏（box）、桌面、三个小瓶、瓶架、灯光和顶部/侧视相机全部沿用原场景的生成逻辑，只有机械臂换成 `assets/so101/` 里的 SO-ARM101 USD（其打印件材质在场景层被改写为白色，舵机壳体保持深灰，与真实的白色套件一致），腕部相机直接复用 Workshop 官方夹爪相机的安装位（gripper 局部偏移 `(-0.005, 0.06, -0.062)`、欧拉角 `-45°, 0, 0`），画面随腕部姿态变化，与仓库行为逐姿态一致。由于 SO-101 的臂展（约 0.38 m）比 reBot 短，基座沿开口方向前移 75 mm（`Y = 0.38 m`）。
+
+白色 SO-ARM101 场景预览（左：腕部 `front`；中：侧视 `side`；右：顶部 `external`）：
+
+| ![front](media/so101_camera_previews/so101_front.png) | ![side](media/so101_camera_previews/so101_side.png) | ![external](media/so101_camera_previews/so101_external.png) |
+|---|---|---|
+| 腕部相机 `front`（随夹爪移动，录制） | 侧视相机 `side`（围栏内固定，仅观察） | 顶部相机 `external`（俯视，录制） |
+
+> 截图可复现：`"$ISAACSIM_ROOT/python.sh" scripts/capture_so101_previews.py`（headless，输出到 `media/so101_camera_previews/`）。
+
+准备工作（对应 NVIDIA 课程第 7~8 章，[Operating SO-101](https://docs.nvidia.com/learning/physical-ai/sim-to-real-so-101/latest/08-operating-so101.html)）：
+
+```bash
+cd ~/rebot_lerobot
+source .venv/bin/activate
+
+# 首次使用先装 Feetech 舵机 SDK（reBot 安装清单里没有）
+uv pip install feetech-servo-sdk
+
+# 校准 SO-101 leader（遥操作主臂；控制板常枚举为 ttyACM）
+lerobot-calibrate --teleop.type=so101_leader \
+  --teleop.port=/dev/ttyACM0 --teleop.id=so101_leader
+
+# 校准 SO-101 follower（真机从臂；联动遥操作需要）
+lerobot-calibrate --robot.type=so101_follower \
+  --robot.port=/dev/ttyUSB1 --robot.id=so101_follower
+```
+
+启动方式与 reBot 完全一致，`S/R/C` 按键、域随机化、看门狗保持、30 FPS 双相机录制都相同：
+
+```bash
+cd ~/rebot-arm-dli-isaacsim
+
+# 仅仿真：leader 控制 Isaac Sim 中的白色 SO-ARM101
+./run_so101.sh --leader-port /dev/ttyUSB0
+
+# 真机 + 仿真联动：一个 leader 同时驱动真实 follower 和仿真臂，
+# 仿真镜像真实从臂的实测关节角（状态行 src=FOLLOWER）
+./run_so101.sh --leader-port /dev/ttyUSB0 --follower-port /dev/ttyUSB1
+```
+
+- 关节映射采用 NVIDIA 官方 `lerobot_interface.py` 的换算表：leader 五个关节映射到 `Rotation/Pitch/Elbow/Wrist_Pitch/Wrist_Roll`，夹爪映射到 `Jaw`（−10°~100°）；
+- 启动前让两臂处于相近姿态（与课程第 8 章的 `lerobot-teleoperate` 建议一致）；
+- 加 `--no-follower` 可显式关闭从臂联动（仿真直接镜像 leader，状态行 `src=LEADER`）；
+- 基座位于 `(-0.021, 0.46) m`——左右居中于围栏中线（USD 底座板相对原点偏右约 2 cm，已补偿），初始位姿抬起的上臂也不会探出开口沿；相对 reBot 布局，瓶架与小瓶**左右互换**并整体**向机器人靠近 10 cm**（瓶架插槽中心在 `(0.16, 0.22) m`，小瓶落在左侧），都在 SO-101 臂展内。收到第一帧 leader 数据前，机械臂保持 USD 零位（手臂水平伸直）。关节映射为 NVIDIA 官方原始对照表（无偏移）。注意校准 leader 时要按官方流程：**零位姿势 = 所有关节处于行程中点**（不是折叠极限），回车后把每个关节全程活动一遍；校准姿势不对会导致仿真与实机姿态对不上、镜像幅度被压缩。
+- **抓取辅助**：leader 夹爪闭合（归一化值 ≤30）且小瓶进入夹爪走廊（沿夹爪连杆指向指尖 3~10.5cm、半径 4.5cm）时，小瓶以当前相对位姿附着到夹爪上稳定携带，松开（≥60）释放；终端打印 `[GRASP]`/`[RELEASE]`，状态行显示 `attached=...`。场景同时限速夹爪闭合（120°/s）、绑定指面摩擦并对小瓶加角阻尼，防止纯接触下小瓶被挤出指缝弹飞。
+- **键盘遥操作（笛卡尔 IK）**：先用鼠标**点一下 3D 视口**让它获得键盘焦点（没有输入框，按键即指令；焦点在属性面板/终端时按键不生效），然后按 `Y` 在 leader/键盘控制间切换（不用 `K`——它和 Isaac Sim 的 GUI 快捷键冲突）。键盘模式直接控制**机械臂末端**：`W/S/A/D` = 末端前进/后退/左/右，`↑/↓` = 末端升高/降低（正运动学从 USD 关节帧解析提取、启动时与物理对照校验，每步用阻尼最小二乘解算四个臂关节并保持工具倾角）；`Q/E` = 腕回转，`F` = 夹爪开/合切换（抓取辅助照常工作），`B` = 步长 5mm/15mm。注意：键盘模式下 `S` 是"后退"，录制用 `T`（leader 模式仍是 `S`）；`R` 重置、`C` 丢弃不变。`W/E/R` 同时是 Isaac 的 gizmo 工具键（按了会切换工具栏模式，属无害副作用）；`F` 在有 prim 被选中时会触发视口聚焦——先点空白处取消选择即可。不接 leader 时用 `--no-start-bridge` 启动即可纯键盘遥操作。
+- **深度与遮挡辅助**：终端状态行实时显示 `nearest=vial_x d=0.xxx m`（最近小瓶到夹爪走廊的距离）；主调试视口里有一条从夹爪指向最近小瓶的引导线（末端带标记球），小瓶进入可抓走廊时**变绿**、较远时橙色——任意旋转视角都能判断夹爪与小瓶的空间关系，不受腕部相机遮挡影响。按 `S` 录制时引导线自动隐藏，不会进数据集画面。
+- **抗爆保护**：关节命令为驱动平滑追踪（drive 模式，不瞬移）且臂关节限速 240°/s——手臂压到桌面只会被顶住，不会深穿透引发物理爆炸；万一出现非有限值（终端 `[physics]` 告警），按 `R` 重置即可恢复，程序不会退出。
+
+数据集写入独立目录，特征空间与真实 SO-101 数据集完全一致（六个 lerobot 电机原始值），可与真机数据混合训练：
+
+```bash
+~/rebot-arm-dli-isaacsim/datasets/so101_vials_front_side
+# 任务文本: Put the three vials into the vial rack
+```
+
+无硬件回归（关节跟踪 + 相机 + 数据集全链路）：
+
+```bash
+./run_so101.sh --test                   # mock leader 关节跟踪回归
+./run_so101.sh --test --test-recording  # 额外验证双相机、H.264 与数据集写入
+```
+
+> 该变体的全部文件都是新增的（`run_so101.sh`、`scripts/so101_*`、`scripts/build_scene_so101.py`、`config/*_so101.json`、`scenes/so101_vials_sorting.usda`），不修改任何 reBot 场景、配置或代码；reBot 的 `./run.sh --test` 回归在本变体加入前后结果完全一致。
+
+> **8 GB 显存机器上 GUI 一打开就整卡**：这是第 10 节记录的 Path Tracing 挤占桌面合成器的问题，与物理碰撞无关（本场景实测物理烘焙仅 0.4 秒、每步 1.3 毫秒，去掉臂部碰撞不会改善）。加 `--path-tracing` 参数用轻量 Real-Time 渲染规避，并先关掉浏览器等占显存的应用：
+> ```bash
+> ISAACSIM_ROOT=... ./run_so101.sh --no-start-bridge --no-recording --no-dr --single-viewport --path-tracing
+> ```
+
 ## 7. 数据集检查、可视化与回放
 
 ### 可视化数据集
@@ -262,6 +335,40 @@ cd ~/rebot-arm-dli-isaacsim
 ```
 
 加 `--loop` 可循环回放。回放脚本发送的是数据集中的 `action` 轨迹，用于检查机械臂运动轨迹；相机画面请用数据集可视化工具查看。
+
+### SO-101 数据的回放与训练（已实测）
+
+回放 SO-101 数据集（另一终端先启动接收端：`./run_so101.sh --headless --no-start-bridge --no-recording --no-dr`）：
+
+```bash
+cd ~/rebot_lerobot && source .venv/bin/activate
+cd ~/rebot-arm-dli-isaacsim
+PYTHONPATH=scripts python scripts/replay_episode_so101.py --episode 0   # 加 --loop 循环
+```
+
+训练（ACT 策略，`--policy.push_to_hub=false` 必须带，否则校验要求 hub repo_id）：
+
+```bash
+cd ~/rebot_lerobot && source .venv/bin/activate
+lerobot-train \
+  --policy.type=act \
+  --policy.push_to_hub=false \
+  --dataset.repo_id=local/so101_vials_front_side \
+  --dataset.root=~/rebot-arm-dli-isaacsim/datasets/so101_vials_front_side \
+  --output_dir=~/rebot_lerobot/outputs/train/act_so101 \
+  --steps=60 --batch_size=4 --num_workers=2
+```
+
+产物在 `checkpoints/last/pretrained_model/`（model.safetensors、config.json、前后处理器）。增大 `--steps`（如 50000）即可正式训练。
+
+**无硬件全链路自检**（2026-11-10 实测通过）：
+
+```bash
+cd ~/rebot-arm-dli-isaacsim
+ISAACSIM_ROOT=... ./run_so101.sh --headless --auto-record 2   # 脚本化采集 2 组
+```
+
+`--auto-record N` 用 mock 时间线（每 7 秒循环一次扫摆+闭合夹爪）无头采集 N 组到真实数据集目录后自动退出；headless 录制只在 30 FPS 采集到期的那一步渲染（Path Traced 产品每帧约 1 秒，全步渲染会拖垮仿真时钟），每组约 3 分钟。
 
 ## 8. 无硬件环境验证
 
